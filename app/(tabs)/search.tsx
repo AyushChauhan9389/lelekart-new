@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { Search, XCircle } from 'lucide-react-native'; // Import Lucide icons
 import { ThemedView } from '@/components/ThemedView';
 import { Input } from '@/components/ui/Input';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+// Removed IconSymbol import
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { api } from '@/utils/api';
@@ -22,15 +23,11 @@ export default function SearchScreen() {
           value={query}
           onChangeText={setQuery}
           autoFocus
-          leftIcon={<IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />}
+          leftIcon={<Search size={20} color={colors.textSecondary} />} // Use Lucide Search
           rightIcon={
             query ? (
               <Pressable onPress={() => setQuery('')}>
-                <IconSymbol
-                  name="xmark.circle.fill"
-                  size={20}
-                  color={colors.textSecondary}
-                />
+                <XCircle size={20} color={colors.textSecondary} /> {/* Use Lucide XCircle */}
               </Pressable>
             ) : undefined
           }

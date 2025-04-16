@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View, Platform } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Search } from 'lucide-react-native'; // Import Lucide Search
+// Removed IconSymbol import
 import { Input } from '@/components/ui/Input';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { CategoryList } from '@/components/home/CategoryList';
@@ -55,7 +56,7 @@ export default function HomeScreen() {
           placeholder="Search products..."
           containerStyle={styles.searchContainer}
           style={styles.searchInput}
-          leftIcon={<IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />}
+          leftIcon={<Search size={20} color={colors.textSecondary} />} // Use Lucide Search
           onPressIn={() => router.push('/(tabs)/search')}
           editable={false}
         />

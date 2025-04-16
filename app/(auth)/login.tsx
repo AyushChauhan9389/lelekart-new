@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Mail, KeyRound } from 'lucide-react-native'; // Import Lucide icons
+// Removed IconSymbol import
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { api } from '@/utils/api'; // Import the api object
+import type { User } from '@/types/api'; // Import User type
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -16,7 +19,8 @@ export default function LoginScreen() {
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  const { login } = useAuth(); // Get login function from context
+
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -54,23 +58,24 @@ export default function LoginScreen() {
     setError('');
 
     try {
-      // TODO: Implement API call to /api/verify-otp
-      const response = await fetch('https://lelehaat.com/api/verify-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, otp }),
-      });
+      // Use the api utility function
+      // Assuming the verifyOtp API returns { success: boolean, user: User, token: string }
+      // Assuming the verifyOtp API returns { success: boolean, user: User, token: string } on success
+      // And potentially { success: false, message: string } on failure
+      const response = await api.auth.verifyOtp(email, otp) as any; // Use 'any' for now or define a more complex response type
 
-      if (!response.ok) {
-        throw new Error('Invalid OTP');
+      if (!response || !response.success || !response.user || !response.token) {
+        // If structure check fails or success is false, use API message or generic error
+        throw new Error(response?.message || 'Invalid OTP or failed to process login.');
       }
 
-      // Navigate to main app after successful login
+      // Call context login function
+      await login(response.user, response.token);
+
+      // Navigate to main app after successful context login
       router.replace('/(tabs)');
-    } catch (err) {
-      setError('Invalid OTP. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Invalid OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +99,7 @@ export default function LoginScreen() {
           keyboardType="email-address"
           autoComplete="email"
           editable={!otpSent}
-          leftIcon={<IconSymbol name="envelope.fill" size={20} color={colors.textSecondary} />}
+          leftIcon={<Mail size={20} color={colors.textSecondary} />} // Use Lucide Mail
         />
 
         {otpSent && (
@@ -105,7 +110,7 @@ export default function LoginScreen() {
             onChangeText={setOtp}
             keyboardType="number-pad"
             maxLength={6}
-            leftIcon={<IconSymbol name="key.fill" size={20} color={colors.textSecondary} />}
+            leftIcon={<KeyRound size={20} color={colors.textSecondary} />} // Use Lucide KeyRound
           />
         )}
 

@@ -1,15 +1,17 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, ActivityIndicator } from 'react-native';
+import { Home, Compass, ShoppingCart, Heart, User } from 'lucide-react-native'; // Import Lucide icons
 
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+// Removed IconSymbol import
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  // No need for isLoading or user check here anymore
 
   return (
     <Tabs
@@ -25,23 +27,52 @@ export default function TabLayout() {
           default: {},
         }),
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} /> }} />
-      {/* Add Explore screen entry with header shown */}
+      {/* All Tabs are defined directly */}
       <Tabs.Screen
-        name="explore"
+        name="index"
         options={{
-          title: 'Explore', // Correct tab title
-          headerShown: true, // Keep header shown
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />, // Change icon
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />, // Use Lucide Home
         }}
       />
-      {/* Keep other tabs - Assuming categories, cart, wishlist, profile are separate files/routes */}
-      {/* If categories, cart, etc. are meant to be part of the explore flow, adjust accordingly */}
-      {/* <Tabs.Screen name="categories" options={{ title: 'Categories', tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} /> }} /> */}
-      {/* <Tabs.Screen name="cart" options={{ title: 'Cart', tabBarIcon: ({ color }) => <IconSymbol size={28} name="cart.fill" color={color} /> }} /> */}
-      {/* <Tabs.Screen name="wishlist" options={{ title: 'Wishlist', tabBarIcon: ({ color }) => <IconSymbol size={28} name="heart.fill" color={color} /> }} /> */}
-      {/* <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} /> }} /> */}
-      <Tabs.Screen name="search" options={{ href: null }} />
+       <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          headerShown: true, // Explicitly show header for this tab
+          tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />, // Use Lucide Compass
+        }}
+      />
+      <Tabs.Screen
+        name="cart"
+        options={{
+          title: 'Cart',
+          tabBarIcon: ({ color, size }) => <ShoppingCart size={size} color={color} />, // Use Lucide ShoppingCart
+          // href removed - protection handled in screen
+        }}
+      />
+       <Tabs.Screen
+        name="wishlist"
+        options={{
+          title: 'Wishlist',
+          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />, // Use Lucide Heart
+           // href removed - protection handled in screen
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => <User size={size} color={color} />, // Use Lucide User
+          // href removed - protection handled in screen
+        }}
+      />
+
+      {/* Hidden Search Tab */}
+      <Tabs.Screen
+        name="search"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }

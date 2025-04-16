@@ -1,40 +1,52 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { SplashScreen, Stack } from 'expo-router';
+import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router'; // Import useRouter, useSegments
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Colors from '@/constants/Colors';
-import { AuthProvider } from '@/context/AuthContext'; // Import AuthProvider
+import { AuthProvider, useAuth } from '@/context/AuthContext'; // Import AuthProvider and useAuth
+
+// Custom hook to manage redirection based on auth state
+function useProtectedRoute() {
+  const segments = useSegments();
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (isLoading) return; // Don't redirect until auth state is loaded
+
+    const inAuthGroup = segments[0] === '(auth)';
+    const inTabsGroup = segments[0] === '(tabs)';
+    const protectedTabs = ['cart', 'profile', 'wishlist']; // Define protected tab routes
+
+    // Check if we are in a protected tab route (ensure segment[1] exists)
+    const isProtectedRoute = inTabsGroup && segments[1] && protectedTabs.includes(segments[1]);
+
+    if (!user && isProtectedRoute) {
+      // Redirect to login if user is not signed in and accessing a protected tab route
+      router.replace('/(auth)/login');
+    } else if (user && inAuthGroup) {
+      // Redirect away from auth screens if user is signed in
+      router.replace('/(tabs)');
+    }
+  }, [user, segments, isLoading, router]);
+}
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+// Main RootLayoutNav component
+function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+  useProtectedRoute(); // Apply protected route logic
 
   return (
-    // Wrap with AuthProvider first, then GestureHandlerRootView
-    <AuthProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="(auth)" />
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
         <Stack.Screen
           name="product/[id]"
           options={{
@@ -43,10 +55,37 @@ export default function RootLayout() {
             headerTransparent: true,
             headerTintColor: Colors[colorScheme ?? 'light'].primary,
           }}
-          />
-        </Stack> {/* Remove the duplicate closing Stack tag */}
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      </ThemeProvider>
+        />
+      </Stack>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  const [loaded, error] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  });
+
+  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null; // Or a loading indicator
+  }
+
+  return (
+    <AuthProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <RootLayoutNav />
       </GestureHandlerRootView>
     </AuthProvider>
   );

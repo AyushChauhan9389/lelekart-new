@@ -5,8 +5,9 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { ImageCarousel } from '@/components/product/ImageCarousel';
-import { Button } from '@/components/ui/Button'; // Import Button
-import { IconSymbol } from '@/components/ui/IconSymbol'; // Import IconSymbol
+import { Button } from '@/components/ui/Button';
+import { ShoppingCart, LogIn } from 'lucide-react-native'; // Import Lucide icons
+// Removed IconSymbol import
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
@@ -135,7 +136,7 @@ export default function ProductScreen() {
           <Button
             onPress={handleAddToCart}
             fullWidth
-            leftIcon={<IconSymbol name="cart.badge.plus" size={20} color={colors.background} />}>
+            leftIcon={<ShoppingCart size={20} color={colors.background} />}> {/* Use Lucide ShoppingCart */}
             Add to Cart
           </Button>
         ) : (
@@ -144,7 +145,7 @@ export default function ProductScreen() {
             onPress={() => router.push('/(auth)/login')} // Navigate to login
             fullWidth
             variant="secondary" // Use a different style?
-            leftIcon={<IconSymbol name="person.fill" size={20} color={colors.background} />}>
+            leftIcon={<LogIn size={20} color={colors.background} />}> {/* Use Lucide LogIn */}
             Login to Add to Cart
           </Button>
         )}

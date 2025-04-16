@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { User as UserIcon, UserRoundCog, Mail, Phone, MapPin } from 'lucide-react-native'; // Import Lucide icons
+// Removed IconSymbol import
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/ThemedText';
@@ -90,7 +91,7 @@ export default function RegisterScreen() {
             value={formData.username}
             onChangeText={handleChange('username')}
             autoCapitalize="none"
-            leftIcon={<IconSymbol name="person.fill" size={20} color={colors.textSecondary} />}
+            leftIcon={<UserIcon size={20} color={colors.textSecondary} />} // Use Lucide UserIcon
           />
 
           <Input
@@ -98,7 +99,7 @@ export default function RegisterScreen() {
             placeholder="Enter your full name"
             value={formData.name}
             onChangeText={handleChange('name')}
-            leftIcon={<IconSymbol name="person.text.rectangle.fill" size={20} color={colors.textSecondary} />}
+            leftIcon={<UserRoundCog size={20} color={colors.textSecondary} />} // Use Lucide UserRoundCog
           />
 
           <Input
@@ -109,7 +110,7 @@ export default function RegisterScreen() {
             keyboardType="email-address"
             autoComplete="email"
             autoCapitalize="none"
-            leftIcon={<IconSymbol name="envelope.fill" size={20} color={colors.textSecondary} />}
+            leftIcon={<Mail size={20} color={colors.textSecondary} />} // Use Lucide Mail
           />
 
           <Input
@@ -118,7 +119,7 @@ export default function RegisterScreen() {
             value={formData.phone}
             onChangeText={handleChange('phone')}
             keyboardType="phone-pad"
-            leftIcon={<IconSymbol name="phone.fill" size={20} color={colors.textSecondary} />}
+            leftIcon={<Phone size={20} color={colors.textSecondary} />} // Use Lucide Phone
           />
 
           <Input
@@ -128,7 +129,7 @@ export default function RegisterScreen() {
             onChangeText={handleChange('address')}
             multiline
             numberOfLines={3}
-            leftIcon={<IconSymbol name="location.fill" size={20} color={colors.textSecondary} />}
+            leftIcon={<MapPin size={20} color={colors.textSecondary} />} // Use Lucide MapPin
           />
 
           {error ? (

@@ -15,7 +15,7 @@ interface ButtonProps {
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: any;
-  children: string;
+  children: React.ReactNode; // Change type to React.ReactNode
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
