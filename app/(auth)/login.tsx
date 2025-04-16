@@ -37,9 +37,8 @@ export default function LoginScreen() {
       // Use the api utility function
       const response = await api.auth.requestOtp(email);
 
-      // Optional: Display success message from response if needed
-      console.log('OTP Request Response:', response); // Log for debugging
-
+      // Show success message with expiry time
+      setError(`${response.message} (expires in ${Math.floor(response.expiresIn / 60)} minutes)`);
       setOtpSent(true); // Proceed to OTP entry
     } catch (err) {
       setError('Failed to send OTP. Please try again.');
@@ -58,21 +57,10 @@ export default function LoginScreen() {
     setError('');
 
     try {
-      // Use the api utility function
-      // Assuming the verifyOtp API returns { success: boolean, user: User, token: string }
-      // Assuming the verifyOtp API returns { success: boolean, user: User, token: string } on success
-      // And potentially { success: false, message: string } on failure
-      const response = await api.auth.verifyOtp(email, otp) as any; // Use 'any' for now or define a more complex response type
-
-      if (!response || !response.success || !response.user || !response.token) {
-        // If structure check fails or success is false, use API message or generic error
-        throw new Error(response?.message || 'Invalid OTP or failed to process login.');
-      }
-
-      // Call context login function
-      await login(response.user, response.token);
-
-      // Navigate to main app after successful context login
+      const response = await api.auth.verifyOtp(email, otp);
+      await login(response);
+      
+      // On successful login, navigate to main app
       router.replace('/(tabs)');
     } catch (err: any) {
       setError(err.message || 'Invalid OTP. Please try again.');

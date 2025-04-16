@@ -1,12 +1,28 @@
 export interface User {
   id: number;
   username: string;
+  password: string;
   email: string;
   role: 'buyer' | 'seller' | 'admin';
-  name: string | null;
-  phone: string | null;
-  address: string | null;
+  name: string;
+  phone: string;
+  address: string;
   approved: boolean;
+  rejected: boolean;
+  isCoAdmin: boolean;
+  permissions: Record<string, any>;
+}
+
+export interface RequestOTPResponse {
+  message: string;
+  email: string;
+  expiresIn: number;
+}
+
+export interface VerifyOTPResponse {
+  user: User;
+  isNewUser: boolean;
+  message: string;
 }
 
 export interface Product {

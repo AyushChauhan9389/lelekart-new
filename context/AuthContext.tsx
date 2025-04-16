@@ -1,11 +1,13 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Assuming AsyncStorage for persistence
-import type { User } from '@/types/api'; // Assuming User type exists
+import { AppState, AppStateStatus } from 'react-native';
+import type { User, VerifyOTPResponse } from '@/types/api';
+import { api } from '@/utils/api';
+import { router } from 'expo-router';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (userData: User, token: string) => Promise<void>; // Example login function
+  login: (response: VerifyOTPResponse) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -18,49 +20,64 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start loading until checked
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Check initial auth status on mount
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      setIsLoading(true);
-      try {
-        const storedUser = await AsyncStorage.getItem('user');
-        const storedToken = await AsyncStorage.getItem('token'); // Assuming token is stored too
-        if (storedUser && storedToken) {
-          setUser(JSON.parse(storedUser));
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Failed to load auth status:', error);
-        setUser(null); // Ensure user is null on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAuthStatus();
-  }, []);
-
-  // Placeholder login function
-  const login = async (userData: User, token: string) => {
+  const checkAuthStatus = async () => {
     try {
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.setItem('token', token); // Store token
-      setUser(userData);
+      const userData = await api.auth.getCurrentUser();
+      if (userData) {
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
     } catch (error) {
-      console.error('Failed to save auth data:', error);
+      // Treat any error as unauthenticated
+      console.debug('Not authenticated:', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Placeholder logout function
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  // Check auth status when app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        checkAuthStatus();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Login function that sets the user from verify OTP response
+  const login = async (response: VerifyOTPResponse) => {
+    try {
+      setUser(response.user);
+    } catch (error) {
+      console.error('Failed to process login:', error);
+      throw error;
+    }
+  };
+
+  // Logout function - will clear the cookie by server
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('token'); // Remove token
+      await fetch('https://lelehaat.com/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
       setUser(null);
+      router.replace('/login');
     } catch (error) {
-      console.error('Failed to remove auth data:', error);
+      console.error('Failed to logout:', error);
+      throw error;
     }
   };
 

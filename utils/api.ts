@@ -1,4 +1,13 @@
-import type { APIResponse, Category, FeaturedHeroProduct, PaginatedResponse, Product } from '@/types/api'; // Add PaginatedResponse and Product
+import type { 
+  APIResponse, 
+  Category, 
+  FeaturedHeroProduct, 
+  PaginatedResponse, 
+  Product,
+  RequestOTPResponse,
+  VerifyOTPResponse,
+  User
+} from '@/types/api';
 
 const API_BASE_URL = 'https://lelehaat.com';
 
@@ -12,6 +21,7 @@ export async function fetchApi<T>(
       'Content-Type': 'application/json',
       ...options.headers,
     },
+    credentials: 'include', // Important: This enables cookie handling
   });
 
   if (!response.ok) {
@@ -25,20 +35,22 @@ export async function fetchApi<T>(
 export const api = {
   auth: {
     requestOtp: (email: string) =>
-      fetchApi('/api/request-otp', {
+      fetchApi<RequestOTPResponse>('/api/auth/request-otp', {
         method: 'POST',
         body: JSON.stringify({ email }),
       }),
     verifyOtp: (email: string, otp: string) =>
-      fetchApi('/api/verify-otp', {
+      fetchApi<VerifyOTPResponse>('/api/auth/verify-otp', {
         method: 'POST',
         body: JSON.stringify({ email, otp }),
       }),
-    register: (userData: any) =>
-      fetchApi('/api/register', {
+    register: (userData: Omit<User, 'id' | 'approved' | 'rejected' | 'isCoAdmin' | 'permissions'>) =>
+      fetchApi<APIResponse<User>>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
       }),
+    getCurrentUser: () =>
+      fetchApi<User>('/api/user'),
   },
   home: {
     // Update the return type to expect a direct array
