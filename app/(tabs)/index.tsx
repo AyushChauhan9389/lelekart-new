@@ -1,74 +1,112 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
+import React, { useCallback, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View, Platform } from 'react-native';
+import { useFocusEffect, router } from 'expo-router';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Input } from '@/components/ui/Input';
+import { HeroCarousel } from '@/components/home/HeroCarousel';
+import { CategoryList } from '@/components/home/CategoryList';
+import { ProductGrid } from '@/components/home/ProductGrid';
 import { ThemedView } from '@/components/ThemedView';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import type { Category, FeaturedHeroProduct, Product, PaginatedResponse } from '@/types/api';
+import { api } from '@/utils/api';
 
 export default function HomeScreen() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [featuredProducts, setFeaturedProducts] = useState<FeaturedHeroProduct[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+
+  const fetchHomeData = async () => {
+    setIsLoading(true);
+    try {
+      const [featuredData, categoriesData, productsData] = await Promise.all([
+        api.home.getFeaturedProducts(),
+        api.home.getCategories(),
+        fetch('https://lelehaat.com/api/products').then((res) => res.json() as Promise<PaginatedResponse<Product>>),
+      ]);
+
+      // Update to handle direct array from getFeaturedProducts
+      if (featuredData) setFeaturedProducts(featuredData);
+      // Update to handle direct array from getCategories
+      if (categoriesData) setCategories(categoriesData);
+      if (productsData.products) setProducts(productsData.products);
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHomeData();
+    }, [])
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <ThemedView style={styles.container}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <Input
+          placeholder="Search products..."
+          containerStyle={styles.searchContainer}
+          style={styles.searchInput}
+          leftIcon={<IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />}
+          onPressIn={() => router.push('/(tabs)/search')}
+          editable={false}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchHomeData} />}>
+        {featuredProducts?.length > 0 && (
+          <View style={styles.section}>
+            <HeroCarousel data={featuredProducts} />
+          </View>
+        )}
+        {categories?.length > 0 && (
+          <View style={styles.section}>
+            <CategoryList data={categories} />
+          </View>
+        )}
+        {products?.length > 0 && (
+          <View style={styles.section}>
+            <ProductGrid data={products} title="Latest Products" />
+          </View>
+        )}
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40, // Adjust top padding for status bar
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  searchContainer: {
+    marginBottom: 0, // Remove default margin from Input
+  },
+  searchInput: {
+    backgroundColor: Colors.light.background, // Use theme color
+    borderRadius: 20, // Make it more rounded
+    paddingVertical: 8, // Adjust padding
+  },
+  content: {
+    flexGrow: 1,
+    paddingBottom: 30, // Add padding at the bottom
+  },
+  section: {
+    marginBottom: 24, // Add space between sections
   },
 });
