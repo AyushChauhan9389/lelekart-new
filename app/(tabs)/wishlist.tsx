@@ -90,6 +90,9 @@ export default function WishlistScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <ThemedText type="title" style={styles.headerTitle}>My Wishlist</ThemedText>
+      </View>
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -149,6 +152,23 @@ export default function WishlistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
   },
   loadingContainer: {
     flex: 1,

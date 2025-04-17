@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Pressable } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, Pressable, Platform } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -160,17 +160,39 @@ function AddressesContent() {
 }
 
 export default function AddressesScreen() {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+
   return (
-    <>
-      <Stack.Screen options={{ title: 'My Addresses' }} />
+    <ThemedView style={styles.container}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <ThemedText type="title" style={styles.headerTitle}>My Addresses</ThemedText>
+      </View>
       <AddressesContent />
-    </>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
   },
   scrollView: {
     flex: 1,

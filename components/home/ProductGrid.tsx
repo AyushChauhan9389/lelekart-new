@@ -13,11 +13,34 @@ interface ProductGridProps {
 }
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
-const COLUMN_COUNT = 2;
+// Dynamic column count based on screen width
+const getColumnCount = () => {
+  if (WINDOW_WIDTH >= 1024) return 4; // Large tablets/desktop
+  if (WINDOW_WIDTH >= 768) return 3;  // Tablets
+  return 2; // Phones
+};
+
 const SPACING = 12;
+const COLUMN_COUNT = getColumnCount();
 const ITEM_WIDTH = (WINDOW_WIDTH - SPACING * (COLUMN_COUNT + 1)) / COLUMN_COUNT;
 
 export function ProductGrid({ data, title }: ProductGridProps) {
+  const [columns, setColumns] = React.useState(COLUMN_COUNT);
+  
+  // Update columns on dimension change
+  React.useEffect(() => {
+    const dimensionsHandler = Dimensions.addEventListener('change', () => {
+      const { width } = Dimensions.get('window');
+      if (width >= 1024) setColumns(4);
+      else if (width >= 768) setColumns(3);
+      else setColumns(2);
+    });
+
+    return () => {
+      dimensionsHandler.remove();
+    };
+  }, []);
+
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -61,7 +84,8 @@ export function ProductGrid({ data, title }: ProductGridProps) {
         data={data}
         renderItem={renderItem}
         keyExtractor={(item: Product) => item.id.toString()} // Add type annotation for item
-        numColumns={COLUMN_COUNT}
+        numColumns={columns}
+        key={columns}
         scrollEnabled={false} // Disable scroll if used within another ScrollView
         contentContainerStyle={styles.listContentContainer}
         columnWrapperStyle={styles.columnWrapper} // Style for rows
@@ -91,15 +115,17 @@ const styles = StyleSheet.create({
     marginBottom: SPACING, // Add space between rows
   },
   item: {
-    width: ITEM_WIDTH, // Set fixed width for each item
-    borderRadius: 8, // Slightly smaller border radius
+    flex: 1,
+    margin: SPACING / 2,
+    maxWidth: (WINDOW_WIDTH - SPACING * 3) / 2, // Ensure items don't get too wide
+    borderRadius: 12,
     overflow: 'hidden',
-    // Add shadow/elevation for card effect
+    backgroundColor: Colors.light.background,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   image: {
     width: '100%',
@@ -110,8 +136,10 @@ const styles = StyleSheet.create({
     padding: 10, // Adjust padding
   },
   name: {
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: WINDOW_WIDTH < 380 ? 13 : 14,
+    marginBottom: 6,
+    lineHeight: 20,
+    minHeight: 40, // Ensure consistent height for product names
   },
   priceContainer: {
     flexDirection: 'row',
@@ -119,8 +147,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   price: {
-    fontSize: 16,
+    fontSize: WINDOW_WIDTH < 380 ? 15 : 17,
     fontWeight: '600',
+    color: Colors.light.primary,
   },
   mrp: {
     fontSize: 12, // Smaller MRP text

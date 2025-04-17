@@ -18,11 +18,34 @@ interface CategoryListProps {
 }
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
-const COLUMN_COUNT = 4; // Increase column count
-const SPACING = 10; // Adjust spacing
+// Dynamic column count based on screen width
+const getColumnCount = () => {
+  if (WINDOW_WIDTH >= 768) return 6; // Tablet landscape
+  if (WINDOW_WIDTH >= 480) return 4; // Tablet portrait
+  return 3; // Phone
+};
+
+const SPACING = 12;
+const COLUMN_COUNT = getColumnCount();
 const ITEM_WIDTH = (WINDOW_WIDTH - SPACING * (COLUMN_COUNT + 1)) / COLUMN_COUNT;
 
 export function CategoryList({ data }: CategoryListProps) {
+  const [columns, setColumns] = React.useState(COLUMN_COUNT);
+
+  // Update columns on dimension change
+  React.useEffect(() => {
+    const dimensionsHandler = Dimensions.addEventListener('change', () => {
+      const { width } = Dimensions.get('window');
+      if (width >= 768) setColumns(6);
+      else if (width >= 480) setColumns(4);
+      else setColumns(3);
+    });
+
+    return () => {
+      dimensionsHandler.remove();
+    };
+  }, []);
+
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -51,11 +74,12 @@ export function CategoryList({ data }: CategoryListProps) {
       <FlatList
         data={data.sort((a, b) => a.displayOrder - b.displayOrder)}
         renderItem={renderItem}
-        numColumns={COLUMN_COUNT}
+        numColumns={columns}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         scrollEnabled={false}
         columnWrapperStyle={styles.columnWrapper}
+        key={columns} // Force remount on column change
       />
     </View>
   );
@@ -83,28 +107,29 @@ const styles = StyleSheet.create({
     // Container for each item to manage width correctly
   },
   card: {
-    flex: 1, // Ensure card takes full height within container if needed
-    borderRadius: 8,
+    flex: 1,
+    borderRadius: 12,
     padding: SPACING,
-    alignItems: 'center', // Center content horizontally
-    justifyContent: 'center', // Center content vertically
-    // Add shadow/elevation if desired
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
+    minHeight: ITEM_WIDTH, // Make card height equal to width for square aspect
   },
   image: {
-    width: ITEM_WIDTH * 0.5, // Adjust image size relative to item width
-    height: ITEM_WIDTH * 0.5, // Make image square or adjust aspect ratio
-    resizeMode: 'contain', // Use contain to show full icon
-    marginBottom: SPACING / 2, // Space between image and text
+    width: ITEM_WIDTH * 0.6,
+    height: ITEM_WIDTH * 0.6,
+    resizeMode: 'contain',
+    marginBottom: SPACING,
   },
   name: {
-    fontSize: 12, // Smaller font size
-    fontWeight: '500',
-    textAlign: 'center', // Center text
+    fontSize: WINDOW_WIDTH < 380 ? 11 : 13,
+    fontWeight: '600',
+    textAlign: 'center',
     marginTop: SPACING / 2,
+    paddingHorizontal: 4,
   },
 });

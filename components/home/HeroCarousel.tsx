@@ -22,7 +22,8 @@ interface HeroCarouselProps {
 }
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
-const ITEM_WIDTH = WINDOW_WIDTH;
+const ITEM_WIDTH = Math.min(WINDOW_WIDTH, 1200); // Cap maximum width
+const ITEM_HEIGHT = WINDOW_WIDTH >= 768 ? 400 : WINDOW_WIDTH >= 480 ? 300 : 250; // Responsive height
 
 export function HeroCarousel({ data }: HeroCarouselProps) {
   const colorScheme = useColorScheme(); // Get current color scheme
@@ -146,24 +147,39 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
 
 const styles = StyleSheet.create({
   slide: {
-    height: 250, // Adjust height as needed
-    justifyContent: 'flex-end', // Align content to the bottom
+    height: ITEM_HEIGHT,
+    justifyContent: 'flex-end',
+    width: ITEM_WIDTH,
+    alignSelf: 'center',
+    overflow: 'hidden',
+    borderRadius: WINDOW_WIDTH >= 768 ? 20 : 0,
   },
   overlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Dark overlay for text visibility
-    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: WINDOW_WIDTH >= 768 ? 32 : 20,
   },
   title: {
-    fontSize: 28, // Adjust size
+    fontSize: WINDOW_WIDTH >= 768 ? 36 : WINDOW_WIDTH >= 480 ? 32 : 28,
     color: 'white',
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: WINDOW_WIDTH >= 768 ? 12 : 8,
+    // Add shadow effect using native shadow properties
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 2,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: WINDOW_WIDTH >= 768 ? 18 : 16,
     color: 'white',
-    marginBottom: 16,
+    marginBottom: WINDOW_WIDTH >= 768 ? 24 : 16,
     opacity: 0.9,
+    maxWidth: WINDOW_WIDTH >= 768 ? 600 : undefined,
+    // Add shadow effect using native shadow properties
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
   },
   badge: {
     backgroundColor: 'red', // Example badge style
@@ -181,10 +197,10 @@ const styles = StyleSheet.create({
   },
   button: {
     alignSelf: 'flex-start',
-    // Remove hardcoded background color, rely on Button component's default or theme
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 5,
+    paddingHorizontal: WINDOW_WIDTH >= 768 ? 24 : 16,
+    paddingVertical: WINDOW_WIDTH >= 768 ? 12 : 8,
+    borderRadius: 8,
+    minWidth: WINDOW_WIDTH >= 768 ? 160 : undefined,
   },
   // Keep pagination styles
   pagination: {
@@ -197,9 +213,15 @@ const styles = StyleSheet.create({
     right: 0,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
+    width: WINDOW_WIDTH >= 768 ? 10 : 8,
+    height: WINDOW_WIDTH >= 768 ? 10 : 8,
+    borderRadius: WINDOW_WIDTH >= 768 ? 5 : 4,
+    marginHorizontal: WINDOW_WIDTH >= 768 ? 6 : 4,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
   },
 });

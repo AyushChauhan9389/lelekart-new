@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View, Platform } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View, Platform, Dimensions } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Search } from 'lucide-react-native'; // Import Lucide Search
 // Removed IconSymbol import
@@ -86,28 +86,46 @@ export default function HomeScreen() {
   );
 }
 
+const WINDOW_WIDTH = Dimensions.get('window').width;
+const SPACING = WINDOW_WIDTH < 380 ? 12 : 16;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40, // Adjust top padding for status bar
+    paddingHorizontal: SPACING,
+    paddingBottom: SPACING,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchContainer: {
-    marginBottom: 0, // Remove default margin from Input
+    marginBottom: 0,
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
   },
   searchInput: {
-    backgroundColor: Colors.light.background, // Use theme color
-    borderRadius: 20, // Make it more rounded
-    paddingVertical: 8, // Adjust padding
+    backgroundColor: Colors.light.background,
+    borderRadius: 20,
+    paddingVertical: WINDOW_WIDTH < 380 ? 8 : 10,
+    fontSize: WINDOW_WIDTH < 380 ? 14 : 16,
   },
   content: {
     flexGrow: 1,
-    paddingBottom: 30, // Add padding at the bottom
+    paddingBottom: SPACING * 2,
   },
   section: {
-    marginBottom: 24, // Add space between sections
+    marginTop: SPACING,
+    marginBottom: SPACING,
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
 });
