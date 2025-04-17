@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
-import { Package, Heart, Settings, LogOut, ChevronRight } from 'lucide-react-native';
+import { Package, Heart, Settings, LogOut, ChevronRight, MapPin } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -43,6 +43,7 @@ export default function ProfileScreen() {
       <View style={[styles.optionsContainer, { backgroundColor: colors.surface }]}>
         <ProfileOption icon={Package} label="My Orders" onPress={() => router.push('/orders')} />
         <ProfileOption icon={Heart} label="Wishlist" onPress={() => router.push('/(tabs)/wishlist')} />
+        <ProfileOption icon={MapPin} label="Saved Addresses" onPress={() => router.push('/(tabs)/addresses')} />
         <ProfileOption icon={Settings} label="Account Settings" onPress={() => alert('Settings not implemented')} isLast />
       </View>
 

@@ -46,7 +46,7 @@ export default function RegisterScreen() {
 
     try {
       // TODO: Implement API call to /api/register
-      const response = await fetch('https://lelehaat.com/api/register', {
+      const response = await fetch('https://lelekart.in/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -53,7 +53,7 @@ export default function ExploreScreen() {
             return [...prevProducts, ...newUniqueProducts];
           }
         });
-        setTotalPages(response.pagination.totalPages);
+        setTotalPages(response.pagination!.totalPages);
       } else {
         if (page === 1) setProducts([]); // Clear if first page has no products
       }
@@ -79,7 +79,7 @@ export default function ExploreScreen() {
   };
 
   const renderProductItem = ({ item }: { item: Product }) => {
-    const imageSource = { uri: item.image_url || 'https://lelehaat.com/images/electronics.svg' };
+    const imageSource = { uri: item.image_url || 'https://lelekart.in/images/electronics.svg' };
     return (
       <Pressable
         style={[styles.item, { backgroundColor: colors.card }]}

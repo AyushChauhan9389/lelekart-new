@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function - will clear the cookie by server
   const logout = async () => {
     try {
-      await fetch('https://lelehaat.com/api/auth/logout', {
+      await fetch('https://lelekart.in/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });

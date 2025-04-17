@@ -24,7 +24,7 @@ export function ProductGrid({ data, title }: ProductGridProps) {
   // Correct renderItem function syntax
   const renderItem = ({ item }: { item: Product }) => {
     // Define the image source, using fallback if item.image_url is missing
-    const imageSource = { uri: item.image_url || 'https://lelehaat.com/images/electronics.svg' };
+    const imageSource = { uri: item.image_url || 'https://lelekart.in/images/electronics.svg' };
 
     return ( // Ensure return statement is correct
       <Pressable

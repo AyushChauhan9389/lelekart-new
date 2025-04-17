@@ -138,3 +138,42 @@ export interface OrderItem {
   price: number; // Price at the time of order
   product: Product;
 }
+
+export interface Address {
+  id: number;
+  userId: number;
+  name: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  isDefault: boolean;
+}
+
+export interface Wallet {
+  id: number;
+  userId: number;
+  balance: number;
+  lifetimeEarned: number;
+}
+
+export interface PaymentResponse {
+  id: string;
+  entity: string;
+  amount: number;
+  amount_paid: number;
+  amount_due: number;
+  currency: string;
+  receipt: string;
+  status: string;
+  attempts: number;
+  key: string;
+}
+
+export interface PaymentVerificationResponse {
+  verified: boolean;
+  message: string;
+}

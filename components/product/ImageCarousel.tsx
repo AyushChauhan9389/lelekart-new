@@ -6,7 +6,7 @@ interface ImageCarouselProps {
 }
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
-const PLACEHOLDER_IMAGE = 'https://lelehaat.com/images/placeholder.png';
+const PLACEHOLDER_IMAGE = 'https://lelekart.in/images/placeholder.png';
 
 export function ImageCarousel({ images: rawImages }: ImageCarouselProps) {
   const flatListRef = useRef<FlatList>(null);

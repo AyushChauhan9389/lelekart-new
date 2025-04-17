@@ -9,10 +9,14 @@ import type {
   VerifyOTPResponse,
   User,
   Order,
-  WishlistItem
+  WishlistItem,
+  Address,
+  Wallet,
+  PaymentResponse,
+  PaymentVerificationResponse
 } from '@/types/api';
 
-const API_BASE_URL = 'https://lelehaat.com';
+const API_BASE_URL = 'https://lelekart.in';
 
 export async function fetchApi<T>(
   endpoint: string,
@@ -169,5 +173,62 @@ export const api = {
       }),
     checkItem: (productId: number) =>
       fetchApi<{ inWishlist: boolean }>(`/api/wishlist/check/${productId}`),
+  },
+  addresses: {
+    getAll: () => 
+      fetchApi<Address[]>('/api/addresses'),
+    add: (address: Omit<Address, 'id' | 'userId'>) =>
+      fetchApi<Address>('/api/addresses', {
+        method: 'POST',
+        body: JSON.stringify(address),
+      }),
+    update: (id: number, address: Partial<Address>) =>
+      fetchApi<Address>(`/api/addresses/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(address),
+      }),
+    delete: (id: number) =>
+      fetchApi<void>(`/api/addresses/${id}`, {
+        method: 'DELETE',
+      }),
+    setDefault: (id: number) =>
+      fetchApi<Address>(`/api/addresses/${id}/default`, {
+        method: 'POST',
+      }),
+  },
+  wallet: {
+    getDetails: () => 
+      fetchApi<Wallet>('/api/wallet'),
+    validateRedemption: (amount: number, coinsToUse: number, categories: string[]) =>
+      fetchApi<{
+        valid: boolean;
+        coinsApplicable: number;
+        discount: number;
+        finalAmount: number;
+        message: string;
+      }>('/api/wallet/validate-redemption', {
+        method: 'POST',
+        body: JSON.stringify({ amount, coinsToUse, categories }),
+      }),
+  },
+  payment: {
+    createOrder: (amount: number) =>
+      fetchApi<PaymentResponse>('/api/create-order', {
+        method: 'POST',
+        body: JSON.stringify({
+          amount,
+          currency: 'INR',
+          receipt: `order_${Date.now()}`,
+        }),
+      }),
+    verifyPayment: (razorpayOrderId: string, razorpayPaymentId: string, razorpaySignature: string) =>
+      fetchApi<PaymentVerificationResponse>('/api/verify-payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          razorpay_order_id: razorpayOrderId,
+          razorpay_payment_id: razorpayPaymentId,
+          razorpay_signature: razorpaySignature,
+        }),
+      }),
   },
 };

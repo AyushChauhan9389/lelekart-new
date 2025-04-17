@@ -235,8 +235,8 @@ export default function CartScreen() {
         </View>
         <Button 
           fullWidth 
-          onPress={() => alert('Checkout not implemented yet')}>
-          Proceed to Checkout
+          onPress={() => router.push('/(tabs)/checkout')}>
+          Continue to Checkout
         </Button>
       </View>
     </ThemedView>

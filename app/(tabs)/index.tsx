@@ -28,7 +28,7 @@ export default function HomeScreen() {
       const [featuredData, categoriesData, productsData] = await Promise.all([
         api.home.getFeaturedProducts(),
         api.home.getCategories(),
-        fetch('https://lelehaat.com/api/products').then((res) => res.json() as Promise<PaginatedResponse<Product>>),
+        fetch('https://lelekart.in/api/products').then((res) => res.json() as Promise<PaginatedResponse<Product>>),
       ]);
 
       // Update to handle direct array from getFeaturedProducts
