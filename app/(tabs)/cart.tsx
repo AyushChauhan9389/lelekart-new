@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   StyleSheet, 
   View, 
@@ -51,9 +52,11 @@ export default function CartScreen() {
     setIsRefreshing(false);
   }, []);
 
-  useEffect(() => {
-    fetchCart();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCart();
+    }, [])
+  );
 
   const handleUpdateQuantity = async (id: number, quantity: number) => {
     if (quantity < 1) return;

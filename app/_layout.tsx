@@ -26,10 +26,10 @@ function useProtectedRoute() {
 
     if (!user && isProtectedRoute) {
       // Redirect to login if user is not signed in and accessing a protected tab route
-      router.replace('/(auth)/login');
+      router.replace('/login');
     } else if (user && inAuthGroup) {
       // Redirect away from auth screens if user is signed in
-      router.replace('/(tabs)');
+      router.replace('/');
     }
   }, [user, segments, isLoading, router]);
 }
