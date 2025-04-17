@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator } from 'react-native'; // Add ActivityIndicator
 import { useLocalSearchParams, router } from 'expo-router'; // Import router
 import { ThemedText } from '@/components/ThemedText';
@@ -6,7 +6,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { Button } from '@/components/ui/Button';
-import { ShoppingCart, LogIn } from 'lucide-react-native'; // Import Lucide icons
+import { ShoppingCart, LogIn, Heart } from 'lucide-react-native'; // Import Lucide icons
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
@@ -16,10 +16,28 @@ export default function ProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [updatingWishlist, setUpdatingWishlist] = useState(false);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
+
+  // Check if product is in wishlist on load
+  useEffect(() => {
+    const checkWishlist = async () => {
+      if (user && product) {
+        try {
+          const { inWishlist } = await api.wishlist.checkItem(product.id);
+          setIsInWishlist(inWishlist);
+        } catch (error) {
+          console.error('Failed to check wishlist status:', error);
+        }
+      }
+    };
+    checkWishlist();
+  }, [user, product]);
 
   React.useEffect(() => {
     const fetchProduct = async () => {
@@ -95,8 +113,6 @@ export default function ProductScreen() {
   const mainImage = product.imageUrl || product.image_url || productImages[0] || ''; // Fallback chain
   const validProductImages = productImages.filter(img => img && typeof img === 'string');
 
-  const [addingToCart, setAddingToCart] = useState(false);
-
   const handleAddToCart = async () => {
     if (!product || addingToCart) return;
     
@@ -169,24 +185,56 @@ export default function ProductScreen() {
       {/* Floating Button Container */}
       <View style={[styles.floatingButtonContainer, { borderTopColor: colors.border }]}>
         {isAuthLoading ? (
-          // Show a loader while checking auth status
           <ActivityIndicator color={colors.primary} />
         ) : user ? (
-          // User is logged in: Show Add to Cart
-          <Button
-            onPress={handleAddToCart}
-            fullWidth
-            disabled={addingToCart}
-            leftIcon={<ShoppingCart size={20} color={colors.background} />}>
-            {addingToCart ? 'Adding...' : 'Add to Cart'}
-          </Button>
+          <>
+            <View style={styles.buttonGroup}>
+                <Button
+                  onPress={async () => {
+                    if (!product || updatingWishlist) return;
+                    setUpdatingWishlist(true);
+                    try {
+                      if (isInWishlist) {
+                        await api.wishlist.removeItem(product.id);
+                      } else {
+                        await api.wishlist.addItem(product.id);
+                      }
+                      setIsInWishlist(!isInWishlist);
+                    } catch (error) {
+                      console.error('Failed to update wishlist:', error);
+                    } finally {
+                      setUpdatingWishlist(false);
+                    }
+                  }}
+                  variant="outline"
+                  style={styles.wishlistButton}
+                  disabled={updatingWishlist}
+                >
+                  <Heart
+                    size={24}
+                    color={isInWishlist ? colors.primary : colors.textSecondary}
+                    fill={isInWishlist ? colors.primary : 'none'}
+                    strokeWidth={2}
+                  />
+                </Button>
+                <View style={styles.addToCartWrapper}>
+                  <Button
+                    onPress={handleAddToCart}
+                    disabled={addingToCart}
+                    leftIcon={<ShoppingCart size={20} color={colors.background} />}
+                  >
+                    {addingToCart ? 'Adding...' : 'Add to Cart'}
+                  </Button>
+                </View>
+            </View>
+          </>
         ) : (
-          // User is not logged in: Show Login button
           <Button
-            onPress={() => router.push('/(auth)/login')} // Navigate to login
+            onPress={() => router.push('/(auth)/login')}
             fullWidth
-            variant="secondary" // Use a different style?
-            leftIcon={<LogIn size={20} color={colors.background} />}> {/* Use Lucide LogIn */}
+            variant="secondary"
+            leftIcon={<LogIn size={20} color={colors.background} />}
+          >
             Login to Add to Cart
           </Button>
         )}
@@ -266,5 +314,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  wishlistButton: {
+    width: 48,
+    height: 48,
+    padding: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 8,
+  },
+  addToCartWrapper: {
+    flex: 1,
   },
 });

@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import React from 'react';
 import { Platform, ActivityIndicator } from 'react-native';
-import { Home, Compass, ShoppingCart, Heart, User } from 'lucide-react-native';
+import { Home, Compass, ShoppingCart, Heart, User, Package } from 'lucide-react-native'; // Add Package
 import { api } from '@/utils/api';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';

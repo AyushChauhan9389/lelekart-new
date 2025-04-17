@@ -9,6 +9,7 @@ export default function OrdersLayout() {
 
   return (
     <Stack
+      initialRouteName="index"
       screenOptions={{
         headerStyle: {
           backgroundColor: colors.background,
@@ -24,9 +25,9 @@ export default function OrdersLayout() {
         }}
       />
       <Stack.Screen
-        name="[id]" // Dynamic route for order details
+        name="[id]"
         options={{
-          title: 'Order Details', // Title will be updated dynamically in the screen component
+          title: 'Order Details',
         }}
       />
     </Stack>

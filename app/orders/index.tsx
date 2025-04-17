@@ -1,57 +1,91 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Pressable } from 'react-native';
+import { StyleSheet, View, ScrollView, ActivityIndicator, Pressable, RefreshControl, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { Button } from '@/components/ui/Button';
 import { api } from '@/utils/api';
 import type { Order } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Package, ChevronRight } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
 
 export default function OrdersScreen() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersData, setOrdersData] = useState<{ orders: Order[]; total: number }>({ orders: [], total: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { user, isLoading: isAuthLoading } = useAuth();
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
     try {
-      let fetchedOrders = await api.orders.getOrders();
-      // Ensure fetchedOrders is always an array
-      if (!Array.isArray(fetchedOrders)) {
-        // If the API returns a single object for one order, wrap it in an array
-        // Or handle other potential non-array responses if necessary
-        fetchedOrders = fetchedOrders ? [fetchedOrders] : []; 
-      }
-      setOrders(fetchedOrders);
-    } catch (error) {
-      console.error('Failed to fetch orders:', error);
-      setOrders([]); // Set to empty array on error
+      setError(null);
+      const data = await api.orders.getOrders();
+      setOrdersData(data);
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+      setError('Unable to load orders. Please try again.');
+      setOrdersData({ orders: [], total: 0 }); // Clear data on error
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]); // Depend on user
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]); // Fetch when component mounts or fetchOrders changes
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await fetchOrders();
     setIsRefreshing(false);
-  }, []);
+  }, [fetchOrders]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+        return colors.success;
+      case 'processing':
+      case 'confirmed':
+      case 'pending': // Added pending
+        return colors.warning;
+      case 'cancelled':
+        return colors.error;
+      default:
+        return colors.text;
+    }
+  };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric'
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
-  if (isLoading) {
+  const formatCurrency = (amount: number | undefined) => {
+    if (amount === undefined || amount === null) return 'N/A';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Render Loading State
+  if (isLoading || isAuthLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -59,18 +93,49 @@ export default function OrdersScreen() {
     );
   }
 
-  if (orders.length === 0) {
+  // Render Login Prompt if not logged in
+  if (!user) {
+    return (
+      <ThemedView style={styles.emptyContainer}>
+        <Package size={64} color={colors.text} style={{ opacity: 0.5 }} />
+        <ThemedText type="title" style={styles.emptyText}>Login to view orders</ThemedText>
+        <Button 
+          onPress={() => router.push('/(auth)/login')}
+          style={styles.loginButton}>
+          Login
+        </Button>
+      </ThemedView>
+    );
+  }
+
+  // Render Error State
+  if (error) {
+    return (
+      <ThemedView style={styles.emptyContainer}>
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <Button 
+          onPress={fetchOrders}
+          style={styles.retryButton}>
+          Retry
+        </Button>
+      </ThemedView>
+    );
+  }
+
+  // Render Empty State
+  if (!ordersData.orders || ordersData.orders.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
         <Package size={64} color={colors.text} style={{ opacity: 0.5 }} />
         <ThemedText type="title" style={styles.emptyText}>No orders yet</ThemedText>
         <ThemedText style={styles.emptySubtext}>
-          Your past orders will appear here.
+          Your orders will appear here once you make a purchase.
         </ThemedText>
       </ThemedView>
     );
   }
 
+  // Render Orders List
   return (
     <ThemedView style={styles.container}>
       <ScrollView
@@ -79,39 +144,72 @@ export default function OrdersScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
       >
-        {orders.map(order => (
-          <Pressable 
-            key={order.id} 
+        {ordersData.orders.map(order => (
+          <Pressable
+            key={order.id}
             style={({ pressed }) => [
-              styles.orderCard, 
+              styles.orderCard,
               { backgroundColor: colors.surface },
               pressed && styles.orderCardPressed
             ]}
-            onPress={() => router.push(`/orders/${order.id}` as any)} // Use type assertion
+            onPress={() => {
+              if (typeof order.id === 'number') {
+                router.push(`/orders/${order.id}`);
+              } else {
+                console.error("Invalid order ID:", order.id);
+              }
+            }}
           >
             <View style={styles.orderContent}>
               <View style={styles.orderHeader}>
-                <ThemedText style={styles.orderId}>Order #{order.id}</ThemedText>
-                <ThemedText style={styles.orderDate}>{formatDate(order.date)}</ThemedText>
+                <ThemedText type="subtitle" numberOfLines={1} style={styles.orderId}>
+                  Order #{order.id}
+                </ThemedText>
+                <ThemedText style={styles.orderDate}>
+                  {formatDate(order.createdAt || order.date)}
+                </ThemedText>
               </View>
+
               <View style={styles.orderDetails}>
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Status:</ThemedText>
-                  <ThemedText style={[styles.status, { color: order.status === 'pending' ? colors.warning : colors.success }]}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                  </ThemedText>
-                </View>
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Total:</ThemedText>
-                  <ThemedText style={styles.totalAmount}>₹{order.total}</ThemedText>
-                </View>
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Payment:</ThemedText>
-                  <ThemedText style={styles.detailValue}>{order.paymentMethod.toUpperCase()}</ThemedText>
+                {order.items && order.items.length > 0 && (
+                  <View style={styles.itemsList}>
+                    {order.items.slice(0, 2).map((item) => (
+                      <ThemedText key={item.id} numberOfLines={1} style={styles.itemText}>
+                        {item.quantity}× {item.product?.name || `Product #${item.productId}`}
+                      </ThemedText>
+                    ))}
+                    {order.items.length > 2 && (
+                      <ThemedText style={styles.moreItems}>
+                        +{order.items.length - 2} more items
+                      </ThemedText>
+                    )}
+                  </View>
+                )}
+
+                <View style={styles.orderFooter}>
+                  <View style={styles.priceInfo}>
+                    <ThemedText style={styles.total}>
+                      {formatCurrency(order.finalAmount ?? order.total)}
+                    </ThemedText>
+                    {order.walletCoinsUsed && order.walletCoinsUsed > 0 && (
+                      <ThemedText style={styles.coinsUsed}>
+                        ({order.walletCoinsUsed} coins used)
+                      </ThemedText>
+                    )}
+                  </View>
+
+                  <View style={styles.statusContainer}>
+                    <ThemedText style={[
+                      styles.status,
+                      { color: getStatusColor(order.status) }
+                    ]}>
+                      {order.status?.toUpperCase() || 'UNKNOWN'}
+                    </ThemedText>
+                    <ChevronRight size={20} color={colors.textSecondary} />
+                  </View>
                 </View>
               </View>
             </View>
-            <ChevronRight size={20} color={colors.textSecondary} style={styles.chevronIcon} />
           </Pressable>
         ))}
       </ScrollView>
@@ -121,6 +219,9 @@ export default function OrdersScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
   },
   loadingContainer: {
@@ -143,15 +244,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
   },
-  scrollView: {
-    flex: 1,
-    paddingTop: 16,
+  errorText: {
+    marginBottom: 16,
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  loginButton: {
+    marginTop: 20,
+    minWidth: 120,
+  },
+  retryButton: {
+    marginTop: 12,
+    minWidth: 120,
   },
   orderCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 16, // Add top margin for spacing
     borderRadius: 12,
-    padding: 16,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -164,57 +274,69 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  orderCardPressed: {
+    opacity: 0.8,
+  },
+  orderContent: {
+    padding: 16,
+  },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
   },
   orderId: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
+    flex: 1,
+    marginRight: 12,
   },
   orderDate: {
-    fontSize: 13,
-    color: Colors.light.textSecondary,
+    fontSize: 14,
+    opacity: 0.6,
   },
   orderDetails: {
-    marginTop: 8,
+    gap: 12,
   },
-  detailRow: {
+  itemsList: {
+    gap: 4,
+  },
+  itemText: {
+    fontSize: 14,
+  },
+  moreItems: {
+    fontSize: 14,
+    opacity: 0.6,
+    marginTop: 2,
+  },
+  orderFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'center',
+    marginTop: 4,
   },
-  detailLabel: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
+  priceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  detailValue: {
+  total: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.light.primary,
+  },
+  coinsUsed: {
     fontSize: 14,
-    fontWeight: '500',
+    opacity: 0.6,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   status: {
     fontSize: 14,
-    fontWeight: 'bold',
-    textTransform: 'capitalize',
-  },
-  totalAmount: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: Colors.light.primary,
-  },
-  orderCardPressed: {
-    opacity: 0.8,
-    backgroundColor: Colors.light.border,
-  },
-  orderContent: {
-    flex: 1,
-  },
-  chevronIcon: {
-    marginLeft: 12,
-    opacity: 0.6,
+    fontWeight: '600',
   },
 });

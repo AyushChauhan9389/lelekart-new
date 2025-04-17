@@ -8,7 +8,8 @@ import type {
   RequestOTPResponse,
   VerifyOTPResponse,
   User,
-  Order
+  Order,
+  WishlistItem
 } from '@/types/api';
 
 const API_BASE_URL = 'https://lelehaat.com';
@@ -17,14 +18,25 @@ export async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // Construct and log the actual headers being sent
+  const finalHeaders = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  console.log('[fetchApi] Sending Request Headers:', finalHeaders);
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    credentials: 'include', // Important: This enables cookie handling
+    headers: finalHeaders, // Use the constructed headers
+    credentials: 'include',
   });
+  
+  // Log all response headers
+  const responseHeaders: { [key: string]: string } = {};
+  response.headers.forEach((value: string, key: string) => {
+    responseHeaders[key] = value;
+  });
+  console.log('Response Headers:', responseHeaders);
 
   if (!response.ok) {
     let errorBody = '';
@@ -105,7 +117,57 @@ export const api = {
       fetchApi<PaginatedResponse<Product>>(`/api/search?q=${encodeURIComponent(query)}`),
   },
   orders: {
-    getOrders: () => fetchApi<Order[]>('/api/orders'),
-    getOrderById: (id: number) => fetchApi<Order>(`/api/orders/${id}`),
+    getOrders: async () => {
+        const endpoint = '/api/orders';
+        console.log(`[api.orders.getOrders] Requesting endpoint: ${endpoint}`);
+        const response = await fetchApi<Order[]>(endpoint);
+        console.log('[api.orders.getOrders] Response:', response);
+        return {
+            orders: response || [],
+            total: response?.length || 0
+        };
+    },
+    getOrderById: (id: number | string) => 
+      fetchApi<Order>(`/api/orders/${id}`),
+    create: (data: {
+      addressId: number;
+      paymentMethod: string;
+      paymentId?: string;
+      items: { productId: number; quantity: number; price: number; }[];
+      walletCoinsUsed?: number;
+    }) => 
+      fetchApi<Order>('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    getTracking: (id: number | string) =>
+      fetchApi<{
+        trackingId: string;
+        courier: string;
+        courierUrl: string;
+        status: string;
+        statusTimeline: {
+          status: string;
+          timestamp: string;
+          description: string;
+        }[];
+        estimatedDelivery: string;
+        currentLocation: string;
+        lastUpdated: string;
+      }>(`/api/orders/${id}/tracking`),
+  },
+  wishlist: {
+    getItems: () => fetchApi<WishlistItem[]>('/api/wishlist'),
+    addItem: (productId: number) =>
+      fetchApi<WishlistItem>('/api/wishlist', {
+        method: 'POST',
+        body: JSON.stringify({ productId }),
+      }),
+    removeItem: (productId: number) =>
+      fetchApi<void>(`/api/wishlist/${productId}`, {
+        method: 'DELETE',
+      }),
+    checkItem: (productId: number) =>
+      fetchApi<{ inWishlist: boolean }>(`/api/wishlist/check/${productId}`),
   },
 };

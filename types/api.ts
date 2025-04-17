@@ -50,7 +50,7 @@ export interface Product {
 export interface PaginatedResponse<T> {
   items?: T[];
   products?: T[];
-  pagination: {
+  pagination?: {
     total: number;
     totalPages: number;
     currentPage: number;
@@ -116,13 +116,18 @@ export interface Order {
   userId: number;
   status: string;
   total: number;
+  totalAmount?: number; // Some responses use totalAmount instead of total
+  walletCoinsUsed?: number;
+  discountAmount?: number;
+  finalAmount?: number;
   date: string;
   shippingDetails: ShippingDetails;
   paymentMethod: string;
   paymentId: string | null;
   orderId: string | null;
   addressId: number | null;
-  items?: OrderItem[]; // Add optional items array
+  items?: OrderItem[]; // Order items array
+  createdAt?: string; // Some responses include createdAt instead of date
 }
 
 export interface OrderItem {
