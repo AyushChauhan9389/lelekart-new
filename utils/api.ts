@@ -82,6 +82,10 @@ export const api = {
       }),
     getCurrentUser: () =>
       fetchApi<User>('/api/user'),
+    logout: () =>
+      fetchApi<void>('/api/auth/logout', {
+        method: 'POST',
+      }),
   },
   home: {
     // Update the return type to expect a direct array

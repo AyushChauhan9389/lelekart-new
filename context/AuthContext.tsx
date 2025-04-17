@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import type { User, VerifyOTPResponse } from '@/types/api';
 import { api } from '@/utils/api';
@@ -69,10 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function - will clear the cookie by server
   const logout = async () => {
     try {
-      await fetch('https://lelekart.in/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await api.auth.logout();
       setUser(null);
       router.replace('/login');
     } catch (error) {
