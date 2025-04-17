@@ -1,13 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View, Platform, Dimensions } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
-import { Search } from 'lucide-react-native'; // Import Lucide Search
-// Removed IconSymbol import
+import { Search } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { CategoryList } from '@/components/home/CategoryList';
 import { ProductGrid } from '@/components/home/ProductGrid';
 import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Category, FeaturedHeroProduct, Product, PaginatedResponse } from '@/types/api';
@@ -31,9 +32,7 @@ export default function HomeScreen() {
         fetch('https://lelekart.in/api/products').then((res) => res.json() as Promise<PaginatedResponse<Product>>),
       ]);
 
-      // Update to handle direct array from getFeaturedProducts
       if (featuredData) setFeaturedProducts(featuredData);
-      // Update to handle direct array from getCategories
       if (categoriesData) setCategories(categoriesData);
       if (productsData.products) setProducts(productsData.products);
     } catch (error) {
@@ -56,7 +55,7 @@ export default function HomeScreen() {
           placeholder="Search products..."
           containerStyle={styles.searchContainer}
           style={styles.searchInput}
-          leftIcon={<Search size={20} color={colors.textSecondary} />} // Use Lucide Search
+          leftIcon={<Search size={20} color={colors.textSecondary} />}
           onPressIn={() => router.push('/(tabs)/search')}
           editable={false}
         />
@@ -73,12 +72,32 @@ export default function HomeScreen() {
         )}
         {categories?.length > 0 && (
           <View style={styles.section}>
-            <CategoryList data={categories} />
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Shop by Category</ThemedText>
+              <Button 
+                variant="ghost"
+                onPress={() => router.push('/categories')}
+                style={styles.viewAllButton}
+              >
+                View All
+              </Button>
+            </View>
+            <CategoryList data={categories} limit={6} />
           </View>
         )}
         {products?.length > 0 && (
           <View style={styles.section}>
-            <ProductGrid data={products} title="Latest Products" />
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Latest Products</ThemedText>
+              <Button 
+                variant="ghost"
+                onPress={() => router.push('/(tabs)/explore')}
+                style={styles.viewAllButton}
+              >
+                View All
+              </Button>
+            </View>
+            <ProductGrid data={products.slice(0, 6)} />
           </View>
         )}
       </ScrollView>
@@ -127,5 +146,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1200,
     alignSelf: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING,
+    marginBottom: SPACING,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  viewAllButton: {
+    minHeight: 32,
   },
 });

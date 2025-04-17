@@ -12,10 +12,7 @@ import { ThemedText } from '@/components/ThemedText';
 import type { Category } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-
-interface CategoryListProps {
-  data: Category[];
-}
+import { Button } from '@/components/ui/Button';
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 // Dynamic column count based on screen width
@@ -29,7 +26,13 @@ const SPACING = 12;
 const COLUMN_COUNT = getColumnCount();
 const ITEM_WIDTH = (WINDOW_WIDTH - SPACING * (COLUMN_COUNT + 1)) / COLUMN_COUNT;
 
-export function CategoryList({ data }: CategoryListProps) {
+interface CategoryListProps {
+  data: Category[];
+  limit?: number;
+  onViewAll?: () => void;
+}
+
+export function CategoryList({ data, limit, onViewAll }: CategoryListProps) {
   const [columns, setColumns] = React.useState(COLUMN_COUNT);
 
   // Update columns on dimension change
@@ -68,11 +71,10 @@ export function CategoryList({ data }: CategoryListProps) {
 
   return (
     <View style={styles.container}>
-      <ThemedText type="subtitle" style={styles.sectionTitle}>
-        Shop by Category
-      </ThemedText>
       <FlatList
-        data={data.sort((a, b) => a.displayOrder - b.displayOrder)}
+        data={data
+          .sort((a, b) => a.displayOrder - b.displayOrder)
+          .slice(0, limit)}
         renderItem={renderItem}
         numColumns={columns}
         contentContainerStyle={styles.list}
@@ -81,6 +83,17 @@ export function CategoryList({ data }: CategoryListProps) {
         columnWrapperStyle={styles.columnWrapper}
         key={columns} // Force remount on column change
       />
+      {onViewAll && (
+        <View style={styles.viewAllContainer}>
+          <Button
+            variant="ghost"
+            onPress={onViewAll}
+            style={styles.viewAllButton}
+          >
+            View All Categories
+          </Button>
+        </View>
+      )}
     </View>
   );
 }
@@ -90,18 +103,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING, // Only horizontal padding for container
     paddingVertical: SPACING,
   },
-  sectionTitle: {
-    fontSize: 18, // Adjust size
-    fontWeight: '600',
-    marginBottom: SPACING + 4, // More space below title
-    paddingHorizontal: SPACING / 2, // Align with item padding
-  },
   list: {
     // No gap needed here if columnWrapper has gap
   },
   columnWrapper: {
     gap: SPACING,
-    justifyContent: 'flex-start', // Align items to start
+    justifyContent: 'flex-start',
+    marginBottom: SPACING, // Add vertical spacing between rows
+  },
+  viewAllContainer: {
+    paddingTop: SPACING,
+    alignItems: 'center',
+  },
+  viewAllButton: {
+    minWidth: 200,
   },
   itemContainer: {
     // Container for each item to manage width correctly
