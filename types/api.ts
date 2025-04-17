@@ -88,9 +88,8 @@ export interface FeaturedHeroProduct {
 export interface CartItem {
   id: number;
   userId: number;
-  productId: number;
-  product: Product;
   quantity: number;
+  product: Product;
 }
 
 export interface WishlistItem {
@@ -99,4 +98,38 @@ export interface WishlistItem {
   productId: number;
   product: Product;
   dateAdded: string;
+}
+
+export interface ShippingDetails {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  notes: string;
+}
+
+export interface Order {
+  id: number;
+  userId: number;
+  status: string;
+  total: number;
+  date: string;
+  shippingDetails: ShippingDetails;
+  paymentMethod: string;
+  paymentId: string | null;
+  orderId: string | null;
+  addressId: number | null;
+  items?: OrderItem[]; // Add optional items array
+}
+
+export interface OrderItem {
+  id: number;
+  orderId: number;
+  productId: number;
+  quantity: number;
+  price: number; // Price at the time of order
+  product: Product;
 }

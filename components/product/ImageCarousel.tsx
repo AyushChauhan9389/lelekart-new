@@ -1,17 +1,48 @@
-import React, { useState } from 'react';
-import { Dimensions, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { Dimensions, FlatList, Image, Pressable, StyleSheet, View, ViewToken } from 'react-native';
 
 interface ImageCarouselProps {
   images: string[];
 }
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
+const PLACEHOLDER_IMAGE = 'https://lelehaat.com/images/placeholder.png';
 
-export function ImageCarousel({ images }: ImageCarouselProps) {
+export function ImageCarousel({ images: rawImages }: ImageCarouselProps) {
+  const flatListRef = useRef<FlatList>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [validImages, setValidImages] = useState<string[]>([]);
+  const [failedImages, setFailedImages] = useState(new Set<string>());
+
+  // Filter and validate images on mount
+  React.useEffect(() => {
+    const filtered = rawImages.filter(url => 
+      url && 
+      typeof url === 'string' && 
+      (url.startsWith('http://') || url.startsWith('https://'))
+    );
+    setValidImages(filtered.length > 0 ? filtered : [PLACEHOLDER_IMAGE]);
+  }, [rawImages]);
+
+  const handleImageError = useCallback((failedUrl: string) => {
+    setFailedImages(prev => {
+      const newSet = new Set(prev);
+      newSet.add(failedUrl);
+      return newSet;
+    });
+    
+    // If all images have failed, use placeholder
+    if (failedImages.size === validImages.length - 1) {
+      setValidImages([PLACEHOLDER_IMAGE]);
+    }
+  }, [validImages.length, failedImages]);
 
   const renderImage = ({ item }: { item: string }) => (
-    <Image source={{ uri: item }} style={styles.image} />
+    <Image 
+      source={{ uri: failedImages.has(item) ? PLACEHOLDER_IMAGE : item }} 
+      style={styles.image}
+      onError={() => handleImageError(item)}
+    />
   );
 
   const renderThumbnail = (image: string, index: number) => (
@@ -22,7 +53,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
         setActiveIndex(index);
       }}>
       <Image
-        source={{ uri: image }}
+        source={{ uri: failedImages.has(image) ? PLACEHOLDER_IMAGE : image }}
         style={[
           styles.thumbnail,
           { opacity: activeIndex === index ? 1 : 0.6 },
@@ -31,10 +62,10 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
     </Pressable>
   );
 
-  const flatListRef = React.useRef<FlatList>(null);
-
-  const onViewableItemsChanged = React.useCallback(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { 
+    viewableItems: Array<ViewToken>
+  }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
       setActiveIndex(viewableItems[0].index);
     }
   }, []);
@@ -47,7 +78,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={images}
+        data={validImages}
         renderItem={renderImage}
         horizontal
         pagingEnabled
@@ -56,7 +87,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
         viewabilityConfig={viewabilityConfig}
       />
       <View style={styles.thumbnailContainer}>
-        {images.map((image, index) => renderThumbnail(image, index))}
+        {validImages.map((image, index) => renderThumbnail(image, index))}
       </View>
     </View>
   );

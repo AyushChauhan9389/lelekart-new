@@ -7,10 +7,10 @@ import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { Button } from '@/components/ui/Button';
 import { ShoppingCart, LogIn } from 'lucide-react-native'; // Import Lucide icons
-// Removed IconSymbol import
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
+import { api } from '@/utils/api';
 
 export default function ProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,8 +24,9 @@ export default function ProductScreen() {
   React.useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await fetch(`https://lelehaat.com/api/products/${id}`);
-        const data = await response.json();
+        const data = await api.products.getById(id);
+        console.log('Raw product data:', data);
+        console.log('Raw images field:', data.images);
         setProduct(data);
       } catch (error) {
         console.error('Error fetching product:', error);
@@ -57,19 +58,58 @@ export default function ProductScreen() {
   let productImages: string[] = [];
   try {
     if (product.images) {
-      // Remove escaped quotes and parse
-      const cleanJson = product.images.replace(/\\/g, '');
-      productImages = JSON.parse(cleanJson);
+      // Handle various image string formats
+      if (typeof product.images === 'string') {
+        // First try parsing as is
+        try {
+          productImages = JSON.parse(product.images);
+        } catch (error) {
+          console.log('Initial parse error, raw images:', product.images);
+          // If that fails, try cleaning the string
+          // Remove outer quotes if present
+          const cleanJson = product.images.replace(/^"/, '').replace(/"$/, '');
+          
+          // Extract URLs from quoted strings
+          const matches = cleanJson.match(/"([^"]+)"/g);
+          console.log('Found image URLs:', matches);
+          
+          if (matches) {
+            // Clean up the URLs by removing quotes
+            productImages = matches.map(url => url.replace(/"/g, ''));
+          } else if (product.images.includes('http')) {
+            // Fallback: treat as single URL if it contains http
+            productImages = [product.images];
+          }
+        }
+      } else if (Array.isArray(product.images)) {
+        productImages = product.images;
+      }
     }
   } catch (error) {
-    console.error('Error parsing images:', error);
+    console.error('Error handling images:', error);
+    // Fallback to empty array
+    productImages = [];
   }
 
-  const mainImage = product.imageUrl ?? product.image_url; // Prioritize imageUrl for single product
+  // Ensure we have valid image URLs
+  const mainImage = product.imageUrl || product.image_url || productImages[0] || ''; // Fallback chain
+  const validProductImages = productImages.filter(img => img && typeof img === 'string');
 
-  const handleAddToCart = () => {
-    // TODO: Implement Add to Cart logic
-    console.log('Add to cart:', product.id);
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  const handleAddToCart = async () => {
+    if (!product || addingToCart) return;
+    
+    setAddingToCart(true);
+    try {
+      await api.cart.addItem(product.id);
+      // Could show a success toast here
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      // Could show an error toast here
+    } finally {
+      setAddingToCart(false);
+    }
   };
 
   return (
@@ -78,7 +118,7 @@ export default function ProductScreen() {
         style={styles.container}
         contentContainerStyle={styles.scrollContentContainer} // Add padding for floating button
       >
-        <ImageCarousel images={[mainImage, ...productImages]} />
+        <ImageCarousel images={[mainImage, ...validProductImages]} />
         <View style={styles.content}>
           <ThemedText type="title" style={styles.name}>
             {product.name}
@@ -136,8 +176,9 @@ export default function ProductScreen() {
           <Button
             onPress={handleAddToCart}
             fullWidth
-            leftIcon={<ShoppingCart size={20} color={colors.background} />}> {/* Use Lucide ShoppingCart */}
-            Add to Cart
+            disabled={addingToCart}
+            leftIcon={<ShoppingCart size={20} color={colors.background} />}>
+            {addingToCart ? 'Adding...' : 'Add to Cart'}
           </Button>
         ) : (
           // User is not logged in: Show Login button

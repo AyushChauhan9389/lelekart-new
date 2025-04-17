@@ -1,12 +1,14 @@
 import type { 
   APIResponse, 
+  CartItem,
   Category, 
   FeaturedHeroProduct, 
   PaginatedResponse, 
   Product,
   RequestOTPResponse,
   VerifyOTPResponse,
-  User
+  User,
+  Order
 } from '@/types/api';
 
 const API_BASE_URL = 'https://lelehaat.com';
@@ -25,7 +27,20 @@ export async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
+    let errorBody = '';
+    try {
+      errorBody = await response.text(); // Try to get error body as text
+    } catch (e) {
+      // Ignore if reading body fails
+    }
+    console.error(`API Error ${response.status}: ${response.statusText}`, errorBody);
+    throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorBody}`);
+  }
+
+  // Handle potential empty responses for non-GET requests
+  const contentType = response.headers.get("content-type");
+  if (response.status === 204 || !contentType || !contentType.includes("application/json")) {
+    return {} as T; // Return an empty object or handle as appropriate
   }
 
   const data = await response.json();
@@ -58,8 +73,26 @@ export const api = {
     // Update the return type to expect a direct array
     getCategories: () => fetchApi<Category[]>('/api/categories'),
   },
-  products: {
-    getById: (id: string) => fetchApi(`/api/products/${id}`),
+  cart: {
+    getItems: () => 
+      fetchApi<CartItem[]>('/api/cart'),
+    addItem: (productId: number, quantity: number = 1) =>
+      fetchApi<CartItem>('/api/cart', {
+        method: 'POST',
+        body: JSON.stringify({ productId, quantity }),
+      }),
+    updateQuantity: (id: number, quantity: number) =>
+      fetchApi<CartItem>(`/api/cart/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ quantity }),
+      }),
+    removeItem: (id: number) => // Use fetchApi helper
+      fetchApi<void>(`/api/cart/${id}`, {
+        method: 'DELETE',
+      }),
+  },
+  products: { // Ensure products object is correctly defined
+    getById: (id: string) => fetchApi<Product>(`/api/products/${id}`),
     // Add function to get products by category
     getByCategory: (categoryName: string, page = 1, limit = 16) =>
       fetchApi<PaginatedResponse<Product>>(
@@ -68,6 +101,11 @@ export const api = {
     // Add function to get all products with pagination
     getAll: (page = 1, limit = 16) =>
       fetchApi<PaginatedResponse<Product>>(`/api/products?page=${page}&limit=${limit}`),
-    search: (query: string) => fetchApi(`/api/search?q=${encodeURIComponent(query)}`),
+    search: (query: string) => 
+      fetchApi<PaginatedResponse<Product>>(`/api/search?q=${encodeURIComponent(query)}`),
+  },
+  orders: {
+    getOrders: () => fetchApi<Order[]>('/api/orders'),
+    getOrderById: (id: number) => fetchApi<Order>(`/api/orders/${id}`),
   },
 };

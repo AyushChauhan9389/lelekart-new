@@ -1,17 +1,42 @@
 import { Tabs } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import React from 'react';
 import { Platform, ActivityIndicator } from 'react-native';
-import { Home, Compass, ShoppingCart, Heart, User } from 'lucide-react-native'; // Import Lucide icons
-
+import { Home, Compass, ShoppingCart, Heart, User } from 'lucide-react-native';
+import { api } from '@/utils/api';
 import { HapticTab } from '@/components/HapticTab';
-// Removed IconSymbol import
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  // No need for isLoading or user check here anymore
+  const [cartCount, setCartCount] = React.useState(0);
+
+  const fetchCartCount = React.useCallback(async () => {
+    try {
+      const items = await api.cart.getItems();
+      setCartCount(items.length);
+    } catch (error) {
+      // Only log error if it's not an auth error
+      if (error instanceof Error && !error.message.includes('401')) {
+        console.error('Failed to fetch cart count:', error);
+      }
+      setCartCount(0);
+    }
+  }, []);
+
+  // Initial cart count fetch
+  React.useEffect(() => {
+    fetchCartCount();
+  }, [fetchCartCount]);
+
+  // Update cart count when cart tab is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchCartCount();
+    }, [fetchCartCount])
+  );
 
   return (
     <Tabs
@@ -46,7 +71,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Cart',
+          title: cartCount > 0 ? `Cart (${cartCount})` : 'Cart',
+          headerShown: true,
           tabBarIcon: ({ color, size }) => <ShoppingCart size={size} color={color} />, // Use Lucide ShoppingCart
           // href removed - protection handled in screen
         }}
@@ -62,7 +88,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: 'Account',
+          headerShown: true,
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />, // Use Lucide User
           // href removed - protection handled in screen
         }}
