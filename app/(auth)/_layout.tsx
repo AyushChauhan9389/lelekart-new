@@ -1,11 +1,20 @@
-import { Stack, useRouter } from 'expo-router'; // Import useRouter
+import { Stack, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Colors from '@/constants/Colors';
-import { TouchableOpacity } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native'; // Import Lucide icon
-// Removed IconSymbol import
+import { TouchableOpacity, BackHandler } from 'react-native';
+import { ChevronLeft } from 'lucide-react-native';
+import { useEffect } from 'react';
 
 export default function AuthLayout() {
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/(tabs)');
+      return true;
+    });
+
+    return () => backHandler.remove();
+  }, []);
+
   const colorScheme = useColorScheme();
   const router = useRouter(); // Add router hook
   const colors = Colors[colorScheme ?? 'light'];
@@ -30,7 +39,7 @@ export default function AuthLayout() {
           headerBackVisible: false, // Hide default back button
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.push('/(tabs)')}
+              onPress={() => router.replace('/(tabs)')}
               style={{ marginLeft: 15, padding: 5 }}>
               <ChevronLeft size={28} color={colors.primary} />
             </TouchableOpacity>
