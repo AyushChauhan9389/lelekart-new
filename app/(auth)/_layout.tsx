@@ -18,6 +18,9 @@ export default function AuthLayout() {
         },
         headerTintColor: colors.primary,
         headerShadowVisible: false,
+        contentStyle: {
+          backgroundColor: colors.background,
+        },
       }}>
       <Stack.Screen
         name="login"
@@ -25,18 +28,13 @@ export default function AuthLayout() {
           title: 'Login',
           headerShown: true,
           headerBackVisible: false, // Hide default back button
-          headerLeft: () => { // Add custom back button
-            // Get theme inside the render prop function to ensure correct context
-            const currentScheme = useColorScheme();
-            const iconColor = Colors[currentScheme ?? 'light'].primary;
-            return (
-              <TouchableOpacity
-              onPress={() => router.push('/(tabs)')} // Navigate to Home tab explicitly
-              style={{ marginLeft: 15, padding: 5 }}> {/* Added padding */}
-              <ChevronLeft size={28} color={iconColor} /> {/* Use Lucide icon */}
-              </TouchableOpacity>
-            );
-          },
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)')}
+              style={{ marginLeft: 15, padding: 5 }}>
+              <ChevronLeft size={28} color={colors.primary} />
+            </TouchableOpacity>
+          ),
           // Removed duplicate closing tag here
         }}
       />
