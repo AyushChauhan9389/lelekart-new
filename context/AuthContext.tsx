@@ -59,6 +59,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function that sets the user from verify OTP response
   const login = async (response: VerifyOTPResponse) => {
     try {
+      if (!response.user) {
+        throw new Error('No user data in response');
+      }
       setUser(response.user);
     } catch (error) {
       console.error('Failed to process login:', error);

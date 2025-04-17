@@ -75,8 +75,18 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email, otp }),
       }),
-    register: (userData: Omit<User, 'id' | 'approved' | 'rejected' | 'isCoAdmin' | 'permissions'>) =>
-      fetchApi<APIResponse<User>>('/api/auth/register', {
+    register: (userData: {
+      username: string;
+      email: string;
+      role: 'buyer';
+      name: string;
+      phone: string;
+      address: string;
+    }) =>
+      fetchApi<{
+        user: User;
+        message: string;
+      }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
       }),

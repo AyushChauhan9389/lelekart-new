@@ -20,8 +20,9 @@ export interface RequestOTPResponse {
 }
 
 export interface VerifyOTPResponse {
-  user: User;
+  user?: User;
   isNewUser: boolean;
+  email: string;
   message: string;
 }
 

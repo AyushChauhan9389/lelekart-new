@@ -58,10 +58,18 @@ export default function LoginScreen() {
 
     try {
       const response = await api.auth.verifyOtp(email, otp);
-      await login(response);
       
-      // On successful login, navigate to main app
-      router.replace('/(tabs)');
+      if (response.isNewUser) {
+        // Navigate to register page with email
+        router.push({
+          pathname: '/register',
+          params: { email: response.email }
+        });
+      } else {
+        await login(response);
+        // On successful login, navigate to main app
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       setError(err.message || 'Invalid OTP. Please try again.');
     } finally {

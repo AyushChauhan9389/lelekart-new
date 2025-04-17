@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
-import { User as UserIcon, UserRoundCog, Mail, Phone, MapPin } from 'lucide-react-native'; // Import Lucide icons
-// Removed IconSymbol import
+import { router, useLocalSearchParams } from 'expo-router';
+import { User as UserIcon, UserRoundCog, Mail, Phone, MapPin } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { api } from '@/utils/api';
+import { useAuth } from '@/context/AuthContext';
 
 export default function RegisterScreen() {
+  const { email: prefillEmail } = useLocalSearchParams<{ email: string }>();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -21,8 +23,15 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const { login } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  useEffect(() => {
+    if (prefillEmail) {
+      setFormData(prev => ({ ...prev, email: prefillEmail }));
+    }
+  }, [prefillEmail]);
 
   const handleRegister = async () => {
     // Basic validation
@@ -45,26 +54,21 @@ export default function RegisterScreen() {
     setError('');
 
     try {
-      // TODO: Implement API call to /api/register
-      const response = await fetch('https://lelekart.in/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          role: 'buyer', // Default role for new users
-        }),
+      const response = await api.auth.register({
+        ...formData,
+        role: 'buyer',
       });
 
-      if (!response.ok) {
-        throw new Error('Registration failed');
-      }
-
-      // After successful registration, redirect to login
-      router.replace('/login');
-    } catch (err) {
-      setError('Registration failed. Please try again.');
+      await login({
+        user: response.user,
+        isNewUser: false,
+        email: response.user.email,
+        message: response.message
+      });
+      
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +95,7 @@ export default function RegisterScreen() {
             value={formData.username}
             onChangeText={handleChange('username')}
             autoCapitalize="none"
-            leftIcon={<UserIcon size={20} color={colors.textSecondary} />} // Use Lucide UserIcon
+            leftIcon={<UserIcon size={20} color={colors.textSecondary} />}
           />
 
           <Input
@@ -99,7 +103,7 @@ export default function RegisterScreen() {
             placeholder="Enter your full name"
             value={formData.name}
             onChangeText={handleChange('name')}
-            leftIcon={<UserRoundCog size={20} color={colors.textSecondary} />} // Use Lucide UserRoundCog
+            leftIcon={<UserRoundCog size={20} color={colors.textSecondary} />}
           />
 
           <Input
@@ -110,7 +114,8 @@ export default function RegisterScreen() {
             keyboardType="email-address"
             autoComplete="email"
             autoCapitalize="none"
-            leftIcon={<Mail size={20} color={colors.textSecondary} />} // Use Lucide Mail
+            editable={!prefillEmail}
+            leftIcon={<Mail size={20} color={colors.textSecondary} />}
           />
 
           <Input
@@ -119,7 +124,7 @@ export default function RegisterScreen() {
             value={formData.phone}
             onChangeText={handleChange('phone')}
             keyboardType="phone-pad"
-            leftIcon={<Phone size={20} color={colors.textSecondary} />} // Use Lucide Phone
+            leftIcon={<Phone size={20} color={colors.textSecondary} />}
           />
 
           <Input
@@ -129,7 +134,7 @@ export default function RegisterScreen() {
             onChangeText={handleChange('address')}
             multiline
             numberOfLines={3}
-            leftIcon={<MapPin size={20} color={colors.textSecondary} />} // Use Lucide MapPin
+            leftIcon={<MapPin size={20} color={colors.textSecondary} />}
           />
 
           {error ? (
@@ -145,14 +150,16 @@ export default function RegisterScreen() {
             {isLoading ? 'Please wait...' : 'Create Account'}
           </Button>
 
-          <Button
-            variant="ghost"
-            onPress={() => router.push('/login')}
-            fullWidth
-            style={styles.loginButton}
-          >
-            Already have an account? Login
-          </Button>
+          {!prefillEmail && (
+            <Button
+              variant="ghost"
+              onPress={() => router.push('/login')}
+              fullWidth
+              style={styles.loginButton}
+            >
+              Already have an account? Login
+            </Button>
+          )}
         </View>
       </ScrollView>
     </ThemedView>
