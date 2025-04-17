@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { AddressForm } from '@/components/address/AddressForm';
 import { api } from '@/utils/api';
 import type { Address } from '@/types/api';
 
 export default function EditAddressScreen() {
+  return (
+    <>
+      <Stack.Screen options={{ 
+        title: 'Edit Address',
+        headerBackTitle: 'Back'
+      }} />
+      <EditAddressContent />
+    </>
+  );
+}
+
+function EditAddressContent() {
   const { id } = useLocalSearchParams();
   const [address, setAddress] = useState<Address | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +57,8 @@ export default function EditAddressScreen() {
       router.back();
     } catch (error) {
       console.error('Error updating address:', error);
-      Alert.alert('Error', 'Failed to update address. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update address. Please try again.';
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -56,7 +69,7 @@ export default function EditAddressScreen() {
   }
 
   return (
-    <ThemedView style={{ flex: 1 }}>
+    <ThemedView style={{ flex: 1, backgroundColor: 'white' }}>
       <AddressForm
         initialData={address}
         onSubmit={handleSubmit}

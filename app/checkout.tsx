@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, ScrollView, ActivityIndicator, Alert, Pressable, TextInput } from 'react-native';
+import { StyleSheet, View, ScrollView, ActivityIndicator, Alert, Pressable, TextInput, TouchableOpacity } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
-import type { Address, CartItem } from '@/types/api';
+import type { Address, CartItem, CreateOrderRequest } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -22,6 +22,7 @@ export default function CheckoutScreen() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [coinsToUse, setCoinsToUse] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<'cod' | 'razorpay'>('cod');
 
   // Calculate totals
   const subtotal = useMemo(() => 
@@ -65,7 +66,7 @@ export default function CheckoutScreen() {
 
   const handleAddAddress = () => {
     // Navigate to addresses screen
-    router.push('/(tabs)/addresses');
+    router.push('/addresses');
   };
 
   const handleAddressSelect = (address: Address) => {
@@ -102,41 +103,57 @@ export default function CheckoutScreen() {
 
     setIsProcessing(true);
     try {
-      // Create Razorpay order
-      const paymentOrder = await api.payment.createOrder(totalBeforeDiscount - coinsToUse);
+      let paymentId = null;
+      let orderId = null;
 
-      // TODO: Initialize Razorpay payment
-      const razorpay = {
-        key: paymentOrder.key,
-        amount: paymentOrder.amount,
-        currency: "INR",
-        name: "LeLeKart",
-        description: "Purchase from LeLeKart",
-        order_id: paymentOrder.id,
-        prefill: {
-          name: user?.name,
-          email: user?.email,
-          contact: user?.phone
-        },
-        theme: { color: colors.primary }
-      };
+      if (selectedPayment === 'razorpay') {
+        // Create Razorpay order
+        const paymentOrder = await api.payment.createOrder(totalBeforeDiscount - coinsToUse);
 
-      // Handle payment response
-      // Assuming payment is successful for now
-      // In real implementation, this would be handled by Razorpay SDK
+        // TODO: Initialize Razorpay payment
+        const razorpay = {
+          key: paymentOrder.key,
+          amount: paymentOrder.amount,
+          currency: "INR",
+          name: "LeLeKart",
+          description: "Purchase from LeLeKart",
+          order_id: paymentOrder.id,
+          prefill: {
+            name: user?.name,
+            email: user?.email,
+            contact: user?.phone
+          },
+          theme: { color: colors.primary }
+        };
+
+        // Initialize Razorpay and wait for payment
+        paymentId = 'dummy_payment_id'; // This would come from Razorpay
+        orderId = paymentOrder.id;
+      }
+
+      // Create order with proper API format
+      const shippingDetailsStr = JSON.stringify({
+        name: selectedAddress.fullName,
+        email: user?.email || '',
+        phone: selectedAddress.phone,
+        address: selectedAddress.address,
+        city: selectedAddress.city,
+        state: selectedAddress.state,
+        zipCode: selectedAddress.pincode,
+        notes: ''
+      });
+
+      // Create order with shipping details and proper API format
       const orderData = {
-        addressId: selectedAddress.id,
-        paymentMethod: 'razorpay',
-        paymentId: 'dummy_payment_id', // This would come from Razorpay
-        items: cartItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          price: item.product.price
-        })),
-        walletCoinsUsed: coinsToUse
+        userId: user?.id || 0,
+        total: totalBeforeDiscount - coinsToUse,
+        status: 'pending',
+        paymentMethod: selectedPayment,
+        paymentId: paymentId || undefined,
+        orderId: orderId || undefined,
+        shippingDetails: shippingDetailsStr
       };
 
-      // Create order
       const order = await api.orders.create(orderData);
 
       // Navigate to order success page
@@ -176,15 +193,12 @@ export default function CheckoutScreen() {
                     selectedAddress?.id === address.id && styles.selectedAddress
                   ]}
                 >
-                  <ThemedText style={styles.addressName}>{address.name}</ThemedText>
-                  <ThemedText style={styles.addressText}>
-                    {address.addressLine1}
-                    {address.addressLine2 ? `, ${address.addressLine2}` : ''}
-                  </ThemedText>
-                  <ThemedText style={styles.addressText}>
-                    {address.city}, {address.state} {address.postalCode}
-                  </ThemedText>
-                  <ThemedText style={styles.addressPhone}>Phone: {address.phone}</ThemedText>
+                  <ThemedText style={styles.addressName}>{address.addressName}</ThemedText>
+                  <ThemedText style={styles.fullName}>{address.fullName}</ThemedText>
+                  <ThemedText style={styles.addressText}>{address.address}</ThemedText>
+                  <ThemedText style={styles.addressText}>{address.city}, {address.state}</ThemedText>
+                  <ThemedText style={styles.pincode}>PIN Code: {address.pincode}</ThemedText>
+                  <ThemedText style={styles.phone}>Phone: {address.phone}</ThemedText>
                 </Pressable>
               ))}
               <Button 
@@ -235,6 +249,38 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
+        {/* Payment Method Section */}
+        <View style={styles.section}>
+          <ThemedText type="title" style={styles.sectionTitle}>Payment Method</ThemedText>
+          <View style={styles.paymentOptions}>
+            <TouchableOpacity 
+              style={[
+                styles.paymentOption,
+                selectedPayment === 'cod' && styles.selectedPayment
+              ]}
+              onPress={() => setSelectedPayment('cod')}
+            >
+              <ThemedText style={styles.paymentText}>Cash on Delivery</ThemedText>
+              {selectedPayment === 'cod' && (
+                <View style={styles.radioSelected} />
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.paymentOption,
+                selectedPayment === 'razorpay' && styles.selectedPayment
+              ]}
+              onPress={() => setSelectedPayment('razorpay')}
+            >
+              <ThemedText style={styles.paymentText}>Pay Online (Razorpay)</ThemedText>
+              {selectedPayment === 'razorpay' && (
+                <View style={styles.radioSelected} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Wallet Section */}
         {walletBalance > 0 && (
           <View style={styles.section}>
@@ -269,6 +315,31 @@ export default function CheckoutScreen() {
 }
 
 const styles = StyleSheet.create({
+  paymentOptions: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
+  },
+  selectedPayment: {
+    backgroundColor: Colors.light.background,
+  },
+  paymentText: {
+    fontSize: 16,
+  },
+  radioSelected: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.light.primary,
+  },
   container: {
     flex: 1,
   },
@@ -307,13 +378,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
+  fullName: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
   addressText: {
     fontSize: 14,
     marginBottom: 2,
   },
-  addressPhone: {
+  pincode: {
+    fontSize: 14,
+    marginTop: 2,
+    color: Colors.light.textSecondary,
+  },
+  phone: {
     fontSize: 14,
     marginTop: 4,
+    color: Colors.light.textSecondary,
   },
   addAddressButton: {
     marginTop: 12,

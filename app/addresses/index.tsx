@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Pressable } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { MapPin, Plus, Edit2, Trash2, Star, StarOff } from 'lucide-react-native';
 
-export default function AddressesScreen() {
+function AddressesContent() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const colorScheme = useColorScheme();
@@ -28,9 +28,12 @@ export default function AddressesScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchAddresses();
-  }, []);
+  // Fetch addresses when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchAddresses();
+    }, [])
+  );
 
   const handleDelete = async (id: number) => {
     Alert.alert(
@@ -82,7 +85,7 @@ export default function AddressesScreen() {
               <View style={styles.nameContainer}>
                 <MapPin size={18} color={colors.primary} />
                 <ThemedText style={styles.addressName}>
-                  {address.name}
+                  {address.addressName}
                 </ThemedText>
               </View>
               <View style={styles.actions}>
@@ -101,7 +104,7 @@ export default function AddressesScreen() {
                 </Pressable>
                 <Pressable
                   onPress={() => router.push({
-                    pathname: '/(tabs)/addresses/edit',
+                    pathname: '/addresses/edit',
                     params: { id: address.id }
                   } as any)}
                   style={({ pressed }) => [
@@ -123,14 +126,19 @@ export default function AddressesScreen() {
               </View>
             </View>
             <View style={styles.addressDetails}>
-              <ThemedText style={styles.addressText}>
-                {address.addressLine1}
-                {address.addressLine2 ? `, ${address.addressLine2}` : ''}
+              <ThemedText style={styles.fullName}>
+                {address.fullName}
               </ThemedText>
               <ThemedText style={styles.addressText}>
-                {address.city}, {address.state} {address.postalCode}
+                {address.address}
               </ThemedText>
-              <ThemedText style={styles.addressPhone}>
+              <ThemedText style={styles.addressText}>
+                {address.city}, {address.state}
+              </ThemedText>
+              <ThemedText style={styles.pincode}>
+                PIN Code: {address.pincode}
+              </ThemedText>
+              <ThemedText style={styles.phone}>
                 Phone: {address.phone}
               </ThemedText>
             </View>
@@ -140,7 +148,7 @@ export default function AddressesScreen() {
 
       <View style={styles.footer}>
         <Button
-          onPress={() => router.push('/(tabs)/addresses/new' as any)}
+          onPress={() => router.push('/addresses/new' as any)}
           leftIcon={<Plus size={18} color={Colors.light.background} />}
           fullWidth
         >
@@ -148,6 +156,15 @@ export default function AddressesScreen() {
         </Button>
       </View>
     </ThemedView>
+  );
+}
+
+export default function AddressesScreen() {
+  return (
+    <>
+      <Stack.Screen options={{ title: 'My Addresses' }} />
+      <AddressesContent />
+    </>
   );
 }
 
@@ -199,11 +216,21 @@ const styles = StyleSheet.create({
   addressDetails: {
     marginLeft: 26,
   },
+  fullName: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
   addressText: {
     fontSize: 14,
     marginBottom: 2,
   },
-  addressPhone: {
+  pincode: {
+    fontSize: 14,
+    marginTop: 2,
+    color: Colors.light.textSecondary,
+  },
+  phone: {
     fontSize: 14,
     marginTop: 4,
     color: Colors.light.textSecondary,

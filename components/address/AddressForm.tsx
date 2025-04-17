@@ -13,14 +13,13 @@ interface AddressFormProps {
 
 export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressFormProps) {
   const [formData, setFormData] = useState({
-    name: initialData?.name || '',
+    addressName: initialData?.addressName || '',
+    fullName: initialData?.fullName || '',
     phone: initialData?.phone || '',
-    addressLine1: initialData?.addressLine1 || '',
-    addressLine2: initialData?.addressLine2 || '',
+    address: initialData?.address || '',
     city: initialData?.city || '',
     state: initialData?.state || '',
-    postalCode: initialData?.postalCode || '',
-    country: initialData?.country || 'India',
+    pincode: initialData?.pincode || '',
     isDefault: initialData?.isDefault || false,
   });
 
@@ -29,12 +28,13 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name) newErrors.name = 'Name is required';
+    if (!formData.addressName) newErrors.addressName = 'Address nickname is required';
+    if (!formData.fullName) newErrors.fullName = 'Full name is required';
     if (!formData.phone) newErrors.phone = 'Phone is required';
-    if (!formData.addressLine1) newErrors.addressLine1 = 'Address is required';
+    if (!formData.address) newErrors.address = 'Address is required';
     if (!formData.city) newErrors.city = 'City is required';
     if (!formData.state) newErrors.state = 'State is required';
-    if (!formData.postalCode) newErrors.postalCode = 'Postal code is required';
+    if (!formData.pincode) newErrors.pincode = 'PIN code is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -49,11 +49,19 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Input
-        label="Name"
-        value={formData.name}
-        onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
+        label="Address Nickname"
+        value={formData.addressName}
+        onChangeText={(text) => setFormData(prev => ({ ...prev, addressName: text }))}
+        placeholder="e.g., Home, Office"
+        error={errors.addressName}
+      />
+
+      <Input
+        label="Full Name"
+        value={formData.fullName}
+        onChangeText={(text) => setFormData(prev => ({ ...prev, fullName: text }))}
         placeholder="John Doe"
-        error={errors.name}
+        error={errors.fullName}
       />
 
       <Input
@@ -66,64 +74,40 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
       />
 
       <Input
-        label="Address Line 1"
-        value={formData.addressLine1}
-        onChangeText={(text) => setFormData(prev => ({ ...prev, addressLine1: text }))}
-        placeholder="Street address"
-        error={errors.addressLine1}
+        label="Complete Address"
+        value={formData.address}
+        onChangeText={(text) => setFormData(prev => ({ ...prev, address: text }))}
+        placeholder="House/Flat no., Street, Area, City, State"
+        multiline
+        numberOfLines={3}
+        error={errors.address}
       />
 
       <Input
-        label="Address Line 2 (Optional)"
-        value={formData.addressLine2}
-        onChangeText={(text) => setFormData(prev => ({ ...prev, addressLine2: text }))}
-        placeholder="Apartment, suite, etc."
+        label="City"
+        value={formData.city}
+        onChangeText={(text) => setFormData(prev => ({ ...prev, city: text }))}
+        placeholder="e.g., Mumbai"
+        error={errors.city}
       />
 
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Input
-            label="City"
-            value={formData.city}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, city: text }))}
-            placeholder="City"
-            error={errors.city}
-          />
-        </View>
+      <Input
+        label="State"
+        value={formData.state}
+        onChangeText={(text) => setFormData(prev => ({ ...prev, state: text }))}
+        placeholder="e.g., Maharashtra"
+        error={errors.state}
+      />
 
-        <View style={styles.halfInput}>
-          <Input
-            label="State"
-            value={formData.state}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, state: text }))}
-            placeholder="State"
-            error={errors.state}
-          />
-        </View>
-      </View>
-
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Input
-            label="Postal Code"
-            value={formData.postalCode}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, postalCode: text }))}
-            placeholder="Postal code"
-            keyboardType="number-pad"
-            error={errors.postalCode}
-          />
-        </View>
-
-        <View style={styles.halfInput}>
-          <Input
-            label="Country"
-            value={formData.country}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, country: text }))}
-            placeholder="Country"
-            editable={false}
-          />
-        </View>
-      </View>
+      <Input
+        label="PIN Code"
+        value={formData.pincode}
+        onChangeText={(text) => setFormData(prev => ({ ...prev, pincode: text }))}
+        placeholder="6-digit PIN code"
+        keyboardType="number-pad"
+        maxLength={6}
+        error={errors.pincode}
+      />
 
       <View style={styles.footer}>
         <Button
@@ -145,13 +129,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  halfInput: {
-    flex: 1,
   },
   footer: {
     marginTop: 24,

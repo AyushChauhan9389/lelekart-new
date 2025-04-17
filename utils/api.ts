@@ -134,11 +134,13 @@ export const api = {
     getOrderById: (id: number | string) => 
       fetchApi<Order>(`/api/orders/${id}`),
     create: (data: {
-      addressId: number;
+      userId: number;
+      total: number;
+      status: string;
       paymentMethod: string;
-      paymentId?: string;
-      items: { productId: number; quantity: number; price: number; }[];
-      walletCoinsUsed?: number;
+      paymentId?: string | null;
+      orderId?: string | null;
+      shippingDetails: string;
     }) => 
       fetchApi<Order>('/api/orders', {
         method: 'POST',

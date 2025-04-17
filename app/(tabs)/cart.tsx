@@ -235,7 +235,7 @@ export default function CartScreen() {
         </View>
         <Button 
           fullWidth 
-          onPress={() => router.push('/(tabs)/checkout')}>
+          onPress={() => router.push('/checkout')}>
           Continue to Checkout
         </Button>
       </View>

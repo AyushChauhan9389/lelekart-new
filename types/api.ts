@@ -111,12 +111,22 @@ export interface ShippingDetails {
   notes: string;
 }
 
+export interface CreateOrderRequest {
+  userId: number;
+  total: number;
+  status: string;
+  paymentMethod: string;
+  paymentId?: string | null;
+  orderId?: string | null;
+  shippingDetails: string; // Stringified ShippingDetails
+}
+
 export interface Order {
   id: number;
   userId: number;
   status: string;
   total: number;
-  totalAmount?: number; // Some responses use totalAmount instead of total
+  totalAmount?: number;
   walletCoinsUsed?: number;
   discountAmount?: number;
   finalAmount?: number;
@@ -126,8 +136,8 @@ export interface Order {
   paymentId: string | null;
   orderId: string | null;
   addressId: number | null;
-  items?: OrderItem[]; // Order items array
-  createdAt?: string; // Some responses include createdAt instead of date
+  items?: OrderItem[];
+  createdAt?: string;
 }
 
 export interface OrderItem {
@@ -142,13 +152,12 @@ export interface OrderItem {
 export interface Address {
   id: number;
   userId: number;
-  name: string;
-  addressLine1: string;
-  addressLine2?: string;
+  addressName: string;
+  fullName: string;
+  address: string;
   city: string;
   state: string;
-  postalCode: string;
-  country: string;
+  pincode: string;
   phone: string;
   isDefault: boolean;
 }
