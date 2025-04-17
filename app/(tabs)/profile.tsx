@@ -35,7 +35,8 @@ export default function ProfileScreen() {
   const colors = Colors[colorScheme ?? 'light'];
 
   if (!user) {
-    return null; // Should be protected by layout
+    router.push('/login');
+    return null;
   }
 
   return (

@@ -22,11 +22,17 @@ function useProtectedRoute() {
     const protectedTabs = ['cart', 'profile', 'wishlist']; // Define protected tab routes
 
     // Check if we are in a protected tab route (ensure segment[1] exists)
-    const isProtectedRoute = inTabsGroup && segments[1] && protectedTabs.includes(segments[1]);
+    const isProtectedRoute = (
+      // Check protected tab routes
+      (inTabsGroup && segments[1] && protectedTabs.includes(segments[1])) ||
+      // Check other protected routes
+      segments[0] === 'orders' ||
+      segments[0] === 'addresses'
+    );
 
     if (!user && isProtectedRoute) {
-      // Redirect to login if user is not signed in and accessing a protected tab route
-      router.replace('/login');
+      // Redirect to login if user is not signed in and accessing a protected route
+      router.push('/login');
     } else if (user && inAuthGroup) {
       // Redirect away from auth screens if user is signed in
       router.replace('/');
