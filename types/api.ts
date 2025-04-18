@@ -187,3 +187,22 @@ export interface PaymentVerificationResponse {
   verified: boolean;
   message: string;
 }
+
+export interface NotificationPreferences {
+  orderUpdates: boolean;
+  promotions: boolean;
+  priceAlerts: boolean;
+  stockAlerts: boolean;
+  accountUpdates: boolean;
+  deliveryUpdates: boolean;
+  recommendationAlerts: boolean;
+  paymentReminders: boolean;
+  communicationPreference: 'email' | 'sms' | 'push';
+}
+
+export interface UserProfile {
+  username: string;
+  email: string;
+  phone: string;
+  address: string;
+}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, ScrollView, ActivityIndicator, Alert, Pressable, TextInput, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, ScrollView, ActivityIndicator, Alert, Pressable, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -14,7 +14,8 @@ export default function CheckoutScreen() {
   const { user } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  
+  const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -24,18 +25,21 @@ export default function CheckoutScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<'cod' | 'razorpay'>('cod');
 
-  // Calculate totals
-  const subtotal = useMemo(() => 
+  const subtotal = useMemo(() =>
     cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
     [cartItems]
   );
-  
+
   const SHIPPING_COST = 40;
   const totalBeforeDiscount = subtotal + SHIPPING_COST;
 
-  // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        router.replace('/(auth)/login'); // Redirect if not logged in
+        return;
+      }
       try {
         const [cartResponse, addressesResponse, walletResponse] = await Promise.all([
           api.cart.getItems(),
@@ -46,11 +50,12 @@ export default function CheckoutScreen() {
         setCartItems(cartResponse);
         setAddresses(addressesResponse);
         setWalletBalance(walletResponse.balance);
-        
-        // Set default address if available
+
         const defaultAddress = addressesResponse.find(addr => addr.isDefault);
         if (defaultAddress) {
           setSelectedAddress(defaultAddress);
+        } else if (addressesResponse.length > 0) {
+          setSelectedAddress(addressesResponse[0]); // Select first if no default
         }
 
         setIsLoading(false);
@@ -62,10 +67,9 @@ export default function CheckoutScreen() {
     };
 
     fetchData();
-  }, []);
+  }, [user]); // Depend on user
 
   const handleAddAddress = () => {
-    // Navigate to addresses screen
     router.push('/addresses');
   };
 
@@ -74,12 +78,16 @@ export default function CheckoutScreen() {
   };
 
   const handleCoinsChange = async (coins: number) => {
-    if (coins > walletBalance) return;
+    const numericCoins = Math.max(0, Math.floor(coins)); // Ensure positive integer
+    if (numericCoins > walletBalance) {
+      setCoinsToUse(walletBalance); // Cap at available balance
+      return;
+    }
     
     try {
       const validation = await api.wallet.validateRedemption(
         totalBeforeDiscount,
-        coins,
+        numericCoins,
         cartItems.map(item => item.product.category)
       );
 
@@ -107,31 +115,14 @@ export default function CheckoutScreen() {
       let orderId = null;
 
       if (selectedPayment === 'razorpay') {
-        // Create Razorpay order
         const paymentOrder = await api.payment.createOrder(totalBeforeDiscount - coinsToUse);
-
-        // TODO: Initialize Razorpay payment
-        const razorpay = {
-          key: paymentOrder.key,
-          amount: paymentOrder.amount,
-          currency: "INR",
-          name: "LeLeKart",
-          description: "Purchase from LeLeKart",
-          order_id: paymentOrder.id,
-          prefill: {
-            name: user?.name,
-            email: user?.email,
-            contact: user?.phone
-          },
-          theme: { color: colors.primary }
-        };
-
-        // Initialize Razorpay and wait for payment
-        paymentId = 'dummy_payment_id'; // This would come from Razorpay
+        // TODO: Integrate Razorpay SDK here
+        // For now, simulate success
+        paymentId = `simulated_${paymentOrder.id}`;
         orderId = paymentOrder.id;
+        Alert.alert("Simulated Payment", `Razorpay Order ID: ${orderId}\nPayment ID: ${paymentId}`);
       }
 
-      // Create order with proper API format
       const shippingDetailsStr = JSON.stringify({
         name: selectedAddress.fullName,
         email: user?.email || '',
@@ -143,8 +134,7 @@ export default function CheckoutScreen() {
         notes: ''
       });
 
-      // Create order with shipping details and proper API format
-      const orderData = {
+      const orderData: CreateOrderRequest = {
         userId: user?.id || 0,
         total: totalBeforeDiscount - coinsToUse,
         status: 'pending',
@@ -152,15 +142,17 @@ export default function CheckoutScreen() {
         paymentId: paymentId || undefined,
         orderId: orderId || undefined,
         shippingDetails: shippingDetailsStr
+        // walletCoinsUsed is not part of CreateOrderRequest
+        // items are likely derived server-side from the cart based on userId
       };
 
       const order = await api.orders.create(orderData);
+      // await api.cart.clearCart(); // Removed as function doesn't exist in context
+      router.replace(`/orders/${order.id}`);
 
-      // Navigate to order success page
-      router.push(`/orders/${order.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Checkout error:', error);
-      Alert.alert('Error', 'Failed to process checkout. Please try again.');
+      Alert.alert('Error', error?.message || 'Failed to process checkout. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -177,7 +169,6 @@ export default function CheckoutScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Addresses Section */}
         <View style={styles.section}>
           <ThemedText type="title" style={styles.sectionTitle}>Delivery Address</ThemedText>
           {addresses.length === 0 ? (
@@ -190,20 +181,21 @@ export default function CheckoutScreen() {
                   onPress={() => handleAddressSelect(address)}
                   style={[
                     styles.addressCard,
-                    selectedAddress?.id === address.id && styles.selectedAddress
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                    selectedAddress?.id === address.id && [styles.selectedAddress, { borderColor: colors.primary }]
                   ]}
                 >
                   <ThemedText style={styles.addressName}>{address.addressName}</ThemedText>
                   <ThemedText style={styles.fullName}>{address.fullName}</ThemedText>
                   <ThemedText style={styles.addressText}>{address.address}</ThemedText>
                   <ThemedText style={styles.addressText}>{address.city}, {address.state}</ThemedText>
-                  <ThemedText style={styles.pincode}>PIN Code: {address.pincode}</ThemedText>
-                  <ThemedText style={styles.phone}>Phone: {address.phone}</ThemedText>
+                  <ThemedText style={[styles.pincode, { color: colors.textSecondary }]}>PIN Code: {address.pincode}</ThemedText>
+                  <ThemedText style={[styles.phone, { color: colors.textSecondary }]}>Phone: {address.phone}</ThemedText>
                 </Pressable>
               ))}
-              <Button 
-                variant="outline" 
-                style={styles.addAddressButton} 
+              <Button
+                variant="outline"
+                style={styles.addAddressButton}
                 onPress={handleAddAddress}
               >
                 Add New Address
@@ -212,7 +204,6 @@ export default function CheckoutScreen() {
           )}
         </View>
 
-        {/* Order Summary */}
         <View style={styles.section}>
           <ThemedText type="title" style={styles.sectionTitle}>Order Summary</ThemedText>
           {cartItems.map(item => (
@@ -225,7 +216,7 @@ export default function CheckoutScreen() {
               </ThemedText>
             </View>
           ))}
-          <View style={styles.costBreakdown}>
+          <View style={[styles.costBreakdown, { backgroundColor: colors.surface }]}>
             <View style={styles.costRow}>
               <ThemedText>Subtotal</ThemedText>
               <ThemedText>₹{subtotal}</ThemedText>
@@ -237,51 +228,51 @@ export default function CheckoutScreen() {
             {coinsToUse > 0 && (
               <View style={styles.costRow}>
                 <ThemedText>Wallet Discount</ThemedText>
-                <ThemedText style={styles.discount}>-₹{coinsToUse}</ThemedText>
+                <ThemedText style={[styles.discount, { color: colors.success }]}>-₹{coinsToUse}</ThemedText>
               </View>
             )}
-            <View style={[styles.costRow, styles.totalRow]}>
+            <View style={[styles.costRow, styles.totalRow, { borderTopColor: colors.border }]}>
               <ThemedText type="title">Total</ThemedText>
-              <ThemedText type="title" style={styles.totalAmount}>
+              <ThemedText type="title" style={[styles.totalAmount, { color: colors.primary }]}>
                 ₹{totalBeforeDiscount - coinsToUse}
               </ThemedText>
             </View>
           </View>
         </View>
 
-        {/* Payment Method Section */}
         <View style={styles.section}>
           <ThemedText type="title" style={styles.sectionTitle}>Payment Method</ThemedText>
-          <View style={styles.paymentOptions}>
-            <TouchableOpacity 
+          <View style={[styles.paymentOptions, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity
               style={[
                 styles.paymentOption,
-                selectedPayment === 'cod' && styles.selectedPayment
+                { borderBottomColor: colors.border },
+                selectedPayment === 'cod' && [styles.selectedPayment, { backgroundColor: colors.background }]
               ]}
               onPress={() => setSelectedPayment('cod')}
             >
               <ThemedText style={styles.paymentText}>Cash on Delivery</ThemedText>
               {selectedPayment === 'cod' && (
-                <View style={styles.radioSelected} />
+                <View style={[styles.radioSelected, { backgroundColor: colors.primary }]} />
               )}
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[
                 styles.paymentOption,
-                selectedPayment === 'razorpay' && styles.selectedPayment
+                { borderBottomWidth: 0 }, // No border for the last item
+                selectedPayment === 'razorpay' && [styles.selectedPayment, { backgroundColor: colors.background }]
               ]}
               onPress={() => setSelectedPayment('razorpay')}
             >
               <ThemedText style={styles.paymentText}>Pay Online (Razorpay)</ThemedText>
               {selectedPayment === 'razorpay' && (
-                <View style={styles.radioSelected} />
+                <View style={[styles.radioSelected, { backgroundColor: colors.primary }]} />
               )}
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Wallet Section */}
         {walletBalance > 0 && (
           <View style={styles.section}>
             <ThemedText type="title" style={styles.sectionTitle}>LeLeKart Wallet</ThemedText>
@@ -289,172 +280,176 @@ export default function CheckoutScreen() {
             <View style={styles.walletInput}>
               <ThemedText>Use Coins:</ThemedText>
               <TextInput
-                style={styles.coinsInput}
+                style={[styles.coinsInput, { borderColor: colors.border, color: colors.text }]}
                 keyboardType="number-pad"
                 value={String(coinsToUse)}
                 onChangeText={(text) => handleCoinsChange(Number(text) || 0)}
                 maxLength={5}
+                placeholder="0"
+                placeholderTextColor={colors.textSecondary}
               />
             </View>
           </View>
         )}
       </ScrollView>
 
-      {/* Checkout Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
         <Button
           fullWidth
           onPress={handleCheckout}
           disabled={isProcessing || !selectedAddress}
         >
-          Place Order
+          {isProcessing ? 'Processing...' : 'Place Order'}
         </Button>
       </View>
     </ThemedView>
   );
 }
 
-const styles = StyleSheet.create({
-  paymentOptions: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
-  },
-  selectedPayment: {
-    backgroundColor: Colors.light.background,
-  },
-  paymentText: {
-    fontSize: 16,
-  },
-  radioSelected: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.light.primary,
-  },
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    marginBottom: 16,
-  },
-  addressCard: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: Colors.light.background,
-    marginBottom: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.light.border,
-  },
-  selectedAddress: {
-    borderColor: Colors.light.primary,
-    borderWidth: 2,
-  },
-  addressName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  fullName: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  addressText: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  pincode: {
-    fontSize: 14,
-    marginTop: 2,
-    color: Colors.light.textSecondary,
-  },
-  phone: {
-    fontSize: 14,
-    marginTop: 4,
-    color: Colors.light.textSecondary,
-  },
-  addAddressButton: {
-    marginTop: 12,
-  },
-  orderItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  itemName: {
-    flex: 1,
-    marginRight: 16,
-  },
-  itemPrice: {
-    fontWeight: '600',
-  },
-  costBreakdown: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: Colors.light.surface,
-    borderRadius: 12,
-  },
-  costRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  totalRow: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.light.border,
-  },
-  discount: {
-    color: Colors.light.success,
-  },
-  totalAmount: {
-    color: Colors.light.primary,
-    fontSize: 20,
-  },
-  walletInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  coinsInput: {
-    marginLeft: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 80,
-  },
-  footer: {
-    padding: 16,
-    paddingBottom: 32,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.light.border,
-    backgroundColor: Colors.light.background,
-  },
-});
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 100, // Space for footer
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      marginBottom: 16,
+    },
+    addressCard: {
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+    selectedAddress: {
+      borderWidth: 2,
+    },
+    addressName: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    fullName: {
+      fontSize: 15,
+      fontWeight: '500',
+      marginBottom: 4,
+    },
+    addressText: {
+      fontSize: 14,
+      marginBottom: 2,
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+    },
+    pincode: {
+      fontSize: 14,
+      marginTop: 2,
+    },
+    phone: {
+      fontSize: 14,
+      marginTop: 4,
+    },
+    addAddressButton: {
+      marginTop: 12,
+    },
+    orderItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    itemName: {
+      flex: 1,
+      marginRight: 16,
+    },
+    itemPrice: {
+      fontWeight: '600',
+    },
+    costBreakdown: {
+      marginTop: 16,
+      padding: 16,
+      borderRadius: 12,
+    },
+    costRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    totalRow: {
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    discount: {
+      fontWeight: '500',
+    },
+    totalAmount: {
+      fontSize: 20,
+    },
+    paymentOptions: {
+      borderRadius: 12,
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    paymentOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    selectedPayment: {
+      // Background applied inline
+    },
+    paymentText: {
+      fontSize: 16,
+    },
+    radioSelected: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    walletInput: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    coinsInput: {
+      marginLeft: 12,
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      minWidth: 80,
+      fontSize: 16,
+    },
+    footer: {
+      padding: 16,
+      paddingBottom: 32, // Adjust for safe area if needed
+      borderTopWidth: StyleSheet.hairlineWidth,
+      ...Platform.select({
+        ios: {
+          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 5,
+        },
+      }),
+    },
+  });

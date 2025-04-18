@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, Pressable, RefreshControl, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -19,6 +19,7 @@ export default function OrdersScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
   const { user, isLoading: isAuthLoading } = useAuth();
 
   const fetchOrders = useCallback(async () => {
@@ -34,15 +35,15 @@ export default function OrdersScreen() {
     } catch (err) {
       console.error('Failed to fetch orders:', err);
       setError('Unable to load orders. Please try again.');
-      setOrdersData({ orders: [], total: 0 }); // Clear data on error
+      setOrdersData({ orders: [], total: 0 });
     } finally {
       setIsLoading(false);
     }
-  }, [user]); // Depend on user
+  }, [user]);
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]); // Fetch when component mounts or fetchOrders changes
+  }, [fetchOrders]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -56,7 +57,7 @@ export default function OrdersScreen() {
         return colors.success;
       case 'processing':
       case 'confirmed':
-      case 'pending': // Added pending
+      case 'pending':
         return colors.warning;
       case 'cancelled':
         return colors.error;
@@ -84,7 +85,6 @@ export default function OrdersScreen() {
     }).format(amount);
   };
 
-  // Render Loading State
   if (isLoading || isAuthLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -93,11 +93,10 @@ export default function OrdersScreen() {
     );
   }
 
-  // Render Login Prompt if not logged in
   if (!user) {
     return (
       <ThemedView style={styles.emptyContainer}>
-        <Package size={64} color={colors.text} style={{ opacity: 0.5 }} />
+        <Package size={64} color={colors.text} style={{ opacity: colorScheme === 'dark' ? 0.4 : 0.5 }} />
         <ThemedText type="title" style={styles.emptyText}>Login to view orders</ThemedText>
         <Button 
           onPress={() => router.push('/(auth)/login')}
@@ -108,7 +107,6 @@ export default function OrdersScreen() {
     );
   }
 
-  // Render Error State
   if (error) {
     return (
       <ThemedView style={styles.emptyContainer}>
@@ -122,11 +120,10 @@ export default function OrdersScreen() {
     );
   }
 
-  // Render Empty State
   if (!ordersData.orders || ordersData.orders.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
-        <Package size={64} color={colors.text} style={{ opacity: 0.5 }} />
+        <Package size={64} color={colors.text} style={{ opacity: colorScheme === 'dark' ? 0.4 : 0.5 }} />
         <ThemedText type="title" style={styles.emptyText}>No orders yet</ThemedText>
         <ThemedText style={styles.emptySubtext}>
           Your orders will appear here once you make a purchase.
@@ -135,7 +132,6 @@ export default function OrdersScreen() {
     );
   }
 
-  // Render Orders List
   return (
     <ThemedView style={styles.container}>
       <ScrollView
@@ -165,7 +161,7 @@ export default function OrdersScreen() {
                 <ThemedText type="subtitle" numberOfLines={1} style={styles.orderId}>
                   Order #{order.id}
                 </ThemedText>
-                <ThemedText style={styles.orderDate}>
+                <ThemedText style={[styles.orderDate, { color: colors.textSecondary }]}>
                   {formatDate(order.createdAt || order.date)}
                 </ThemedText>
               </View>
@@ -179,7 +175,7 @@ export default function OrdersScreen() {
                       </ThemedText>
                     ))}
                     {order.items.length > 2 && (
-                      <ThemedText style={styles.moreItems}>
+                      <ThemedText style={[styles.moreItems, { color: colors.textSecondary }]}>
                         +{order.items.length - 2} more items
                       </ThemedText>
                     )}
@@ -188,11 +184,11 @@ export default function OrdersScreen() {
 
                 <View style={styles.orderFooter}>
                   <View style={styles.priceInfo}>
-                    <ThemedText style={styles.total}>
+                    <ThemedText style={[styles.total, { color: colors.primary }]}>
                       {formatCurrency(order.finalAmount ?? order.total)}
                     </ThemedText>
                     {order.walletCoinsUsed && order.walletCoinsUsed > 0 && (
-                      <ThemedText style={styles.coinsUsed}>
+                      <ThemedText style={[styles.coinsUsed, { color: colors.textSecondary }]}>
                         ({order.walletCoinsUsed} coins used)
                       </ThemedText>
                     )}
@@ -217,126 +213,125 @@ export default function OrdersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 20,
-  },
-  emptySubtext: {
-    marginTop: 8,
-    textAlign: 'center',
-    opacity: 0.7,
-  },
-  errorText: {
-    marginBottom: 16,
-    textAlign: 'center',
-    opacity: 0.7,
-  },
-  loginButton: {
-    marginTop: 20,
-    minWidth: 120,
-  },
-  retryButton: {
-    marginTop: 12,
-    minWidth: 120,
-  },
-  orderCard: {
-    marginHorizontal: 16,
-    marginTop: 16, // Add top margin for spacing
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  orderCardPressed: {
-    opacity: 0.8,
-  },
-  orderContent: {
-    padding: 16,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  orderId: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 12,
-  },
-  orderDate: {
-    fontSize: 14,
-    opacity: 0.6,
-  },
-  orderDetails: {
-    gap: 12,
-  },
-  itemsList: {
-    gap: 4,
-  },
-  itemText: {
-    fontSize: 14,
-  },
-  moreItems: {
-    fontSize: 14,
-    opacity: 0.6,
-    marginTop: 2,
-  },
-  orderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  priceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  total: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.primary,
-  },
-  coinsUsed: {
-    fontSize: 14,
-    opacity: 0.6,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  status: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    emptyText: {
+      marginTop: 16,
+      fontSize: 20,
+    },
+    emptySubtext: {
+      marginTop: 8,
+      textAlign: 'center',
+      opacity: colorScheme === 'dark' ? 0.5 : 0.7,
+    },
+    errorText: {
+      marginBottom: 16,
+      textAlign: 'center',
+      opacity: colorScheme === 'dark' ? 0.5 : 0.7,
+    },
+    loginButton: {
+      marginTop: 20,
+      minWidth: 120,
+    },
+    retryButton: {
+      marginTop: 12,
+      minWidth: 120,
+    },
+    orderCard: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      borderRadius: 12,
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      ...Platform.select({
+        ios: {
+          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 3,
+        },
+      }),
+    },
+    orderCardPressed: {
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+    },
+    orderContent: {
+      padding: 16,
+    },
+    orderHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    orderId: {
+      fontSize: 16,
+      fontWeight: '600',
+      flex: 1,
+      marginRight: 12,
+    },
+    orderDate: {
+      fontSize: 14,
+    },
+    orderDetails: {
+      gap: 12,
+    },
+    itemsList: {
+      gap: 4,
+    },
+    itemText: {
+      fontSize: 14,
+    },
+    moreItems: {
+      fontSize: 14,
+      marginTop: 2,
+    },
+    orderFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    priceInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    total: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    coinsUsed: {
+      fontSize: 14,
+    },
+    statusContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    status: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  });

@@ -57,6 +57,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />, // Use Lucide Home
         }}
       />

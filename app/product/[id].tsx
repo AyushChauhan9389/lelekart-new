@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator } from 'react-native'; // Add ActivityIndicator
-import { useLocalSearchParams, router } from 'expo-router'; // Import router
+import React, { useState, useEffect, useMemo } from 'react';
+import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Image } from 'react-native'; // Added Image back
+import { useLocalSearchParams, router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { useAuth } from '@/context/AuthContext';
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { Button } from '@/components/ui/Button';
-import { ShoppingCart, LogIn, Heart } from 'lucide-react-native'; // Import Lucide icons
+import { ShoppingCart, LogIn, Heart } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
@@ -22,9 +22,9 @@ export default function ProductScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
+  const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
+  const { user, isLoading: isAuthLoading } = useAuth();
 
-  // Check if product is in wishlist on load
   useEffect(() => {
     const checkWishlist = async () => {
       if (user && product) {
@@ -39,12 +39,14 @@ export default function ProductScreen() {
     checkWishlist();
   }, [user, product]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchProduct = async () => {
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
       try {
         const data = await api.products.getById(id);
-        console.log('Raw product data:', data);
-        console.log('Raw images field:', data.images);
         setProduct(data);
       } catch (error) {
         console.error('Error fetching product:', error);
@@ -56,46 +58,34 @@ export default function ProductScreen() {
     fetchProduct();
   }, [id]);
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
+      <ThemedView style={styles.centeredContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </ThemedView>
     );
   }
 
   if (!product) {
     return (
-      <ThemedView style={styles.container}>
+      <ThemedView style={styles.centeredContainer}>
         <ThemedText>Product not found</ThemedText>
       </ThemedView>
     );
   }
 
-  // Handle both string array and JSON string formats
   let productImages: string[] = [];
   try {
     if (product.images) {
-      // Handle various image string formats
       if (typeof product.images === 'string') {
-        // First try parsing as is
         try {
           productImages = JSON.parse(product.images);
         } catch (error) {
-          console.log('Initial parse error, raw images:', product.images);
-          // If that fails, try cleaning the string
-          // Remove outer quotes if present
           const cleanJson = product.images.replace(/^"/, '').replace(/"$/, '');
-          
-          // Extract URLs from quoted strings
           const matches = cleanJson.match(/"([^"]+)"/g);
-          console.log('Found image URLs:', matches);
-          
           if (matches) {
-            // Clean up the URLs by removing quotes
             productImages = matches.map(url => url.replace(/"/g, ''));
           } else if (product.images.includes('http')) {
-            // Fallback: treat as single URL if it contains http
             productImages = [product.images];
           }
         }
@@ -105,26 +95,38 @@ export default function ProductScreen() {
     }
   } catch (error) {
     console.error('Error handling images:', error);
-    // Fallback to empty array
     productImages = [];
   }
 
-  // Ensure we have valid image URLs
-  const mainImage = product.imageUrl || product.image_url || productImages[0] || ''; // Fallback chain
+  const mainImage = product.imageUrl || product.image_url || productImages[0] || '';
   const validProductImages = productImages.filter(img => img && typeof img === 'string');
 
   const handleAddToCart = async () => {
     if (!product || addingToCart) return;
-    
     setAddingToCart(true);
     try {
       await api.cart.addItem(product.id);
-      // Could show a success toast here
     } catch (error) {
       console.error('Failed to add to cart:', error);
-      // Could show an error toast here
     } finally {
       setAddingToCart(false);
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!product || updatingWishlist) return;
+    setUpdatingWishlist(true);
+    try {
+      if (isInWishlist) {
+        await api.wishlist.removeItem(product.id);
+      } else {
+        await api.wishlist.addItem(product.id);
+      }
+      setIsInWishlist(!isInWishlist);
+    } catch (error) {
+      console.error('Failed to update wishlist:', error);
+    } finally {
+      setUpdatingWishlist(false);
     }
   };
 
@@ -132,7 +134,7 @@ export default function ProductScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContentContainer} // Add padding for floating button
+        contentContainerStyle={styles.scrollContentContainer}
       >
         <ImageCarousel images={[mainImage, ...validProductImages]} />
         <View style={styles.content}>
@@ -147,14 +149,12 @@ export default function ProductScreen() {
             {product.mrp > product.price && (
               <View style={styles.discountContainer}>
                 <ThemedText style={styles.mrp}>₹{product.mrp}</ThemedText>
-                <ThemedText style={styles.discount}>
+                <ThemedText style={[styles.discount, { color: colors.success }]}>
                   {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% OFF
                 </ThemedText>
               </View>
             )}
           </View>
-
-          {/* Removed Button from here */}
 
           {product.specifications && (
             <View style={styles.section}>
@@ -182,52 +182,32 @@ export default function ProductScreen() {
         </View>
       </ScrollView>
 
-      {/* Floating Button Container */}
-      <View style={[styles.floatingButtonContainer, { borderTopColor: colors.border }]}>
-        {isAuthLoading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : user ? (
-          <>
-            <View style={styles.buttonGroup}>
-                <Button
-                  onPress={async () => {
-                    if (!product || updatingWishlist) return;
-                    setUpdatingWishlist(true);
-                    try {
-                      if (isInWishlist) {
-                        await api.wishlist.removeItem(product.id);
-                      } else {
-                        await api.wishlist.addItem(product.id);
-                      }
-                      setIsInWishlist(!isInWishlist);
-                    } catch (error) {
-                      console.error('Failed to update wishlist:', error);
-                    } finally {
-                      setUpdatingWishlist(false);
-                    }
-                  }}
-                  variant="outline"
-                  style={styles.wishlistButton}
-                  disabled={updatingWishlist}
-                >
-                  <Heart
-                    size={24}
-                    color={isInWishlist ? colors.primary : colors.textSecondary}
-                    fill={isInWishlist ? colors.primary : 'none'}
-                    strokeWidth={2}
-                  />
-                </Button>
-                <View style={styles.addToCartWrapper}>
-                  <Button
-                    onPress={handleAddToCart}
-                    disabled={addingToCart}
-                    leftIcon={<ShoppingCart size={20} color={colors.background} />}
-                  >
-                    {addingToCart ? 'Adding...' : 'Add to Cart'}
-                  </Button>
-                </View>
+      <View style={[styles.floatingButtonContainer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+        {user ? (
+          <View style={styles.buttonGroup}>
+            <Button
+              onPress={handleWishlistToggle}
+              variant="outline"
+              style={StyleSheet.flatten([styles.wishlistButton, { borderColor: colors.border }])} // Flatten styles
+              disabled={updatingWishlist}
+            >
+              <Heart
+                size={24}
+                color={isInWishlist ? colors.primary : colors.textSecondary}
+                fill={isInWishlist ? colors.primary : 'none'}
+                strokeWidth={2}
+              />
+            </Button>
+            <View style={styles.addToCartWrapper}>
+              <Button
+                onPress={handleAddToCart}
+                disabled={addingToCart}
+                leftIcon={<ShoppingCart size={20} color={colors.background} />}
+              >
+                {addingToCart ? 'Adding...' : 'Add to Cart'}
+              </Button>
             </View>
-          </>
+          </View>
         ) : (
           <Button
             onPress={() => router.push('/(auth)/login')}
@@ -243,94 +223,103 @@ export default function ProductScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContentContainer: {
-    paddingBottom: 100, // Space for floating button
-  },
-  content: {
-    padding: 20,
-  },
-  name: {
-    fontSize: 26, // Slightly larger
-    marginBottom: 12, // Increased margin
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline', // Align baseline for better text alignment
-    gap: 10, // Adjusted gap
-    marginBottom: 20, // Increased margin
-  },
-  price: {
-    fontSize: 30, // Larger price
-    fontWeight: 'bold',
-  },
-  discountContainer: {
-    flexDirection: 'row', // Align discount horizontally
-    alignItems: 'baseline',
-    gap: 6,
-  },
-  mrp: {
-    fontSize: 18, // Larger MRP
-    textDecorationLine: 'line-through',
-    opacity: 0.6, // Slightly less opacity
-  },
-  discount: {
-    fontSize: 16, // Larger discount text
-    color: Colors.light.success, // Use theme color
-    fontWeight: '600',
-  },
-  // Removed addToCartButton style
-  section: {
-    marginTop: 20,
-    marginBottom: 12, // Add bottom margin
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 10, // Increased margin
-  },
-  sectionContent: {
-    fontSize: 16,
-    lineHeight: 24, // Improve readability
-    opacity: 0.8,
-  },
-  floatingButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    paddingBottom: 24, // Extra padding for safe area bottom inset
-    backgroundColor: Colors.light.background, // Use theme background
-    borderTopWidth: 1,
-    elevation: 5, // Android shadow
-    shadowColor: '#000', // iOS shadow
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  buttonGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  wishlistButton: {
-    width: 48,
-    height: 48,
-    padding: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: 8,
-  },
-  addToCartWrapper: {
-    flex: 1,
-  },
-});
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+    },
+    container: {
+      flex: 1,
+    },
+    centeredContainer: { // Added for loading/error states
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    scrollContentContainer: {
+      paddingBottom: 100,
+    },
+    content: {
+      padding: 20,
+    },
+    name: {
+      fontSize: 26,
+      marginBottom: 12,
+    },
+    priceContainer: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 10,
+      marginBottom: 20,
+    },
+    price: {
+      fontSize: 30,
+      fontWeight: 'bold',
+    },
+    discountContainer: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 6,
+    },
+    mrp: {
+      fontSize: 18,
+      textDecorationLine: 'line-through',
+      opacity: colorScheme === 'dark' ? 0.5 : 0.6,
+    },
+    discount: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    section: {
+      marginTop: 20,
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 10,
+    },
+    sectionContent: {
+      fontSize: 16,
+      lineHeight: 24,
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+    },
+    floatingButtonContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: 16,
+      paddingBottom: 24,
+      borderTopWidth: 1,
+      ...Platform.select({
+        ios: {
+          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 5,
+        },
+      }),
+    },
+    buttonGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+    },
+    wishlistButton: {
+      width: 48,
+      height: 48,
+      padding: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderRadius: 8,
+    },
+    addToCartWrapper: {
+      flex: 1,
+    },
+  });

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View, Platform, Dimensions } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View, Platform, Dimensions, Pressable } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
@@ -13,6 +13,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Category, FeaturedHeroProduct, Product, PaginatedResponse } from '@/types/api';
 import { api } from '@/utils/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
@@ -51,14 +52,18 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <Input
-          placeholder="Search products..."
-          containerStyle={styles.searchContainer}
-          style={styles.searchInput}
-          leftIcon={<Search size={20} color={colors.textSecondary} />}
-          onPressIn={() => router.push('/(tabs)/search')}
-          editable={false}
-        />
+        
+          <ThemedText style={styles.logo}>LeleKart</ThemedText>
+          <Pressable onPress={() => router.push('/(tabs)/search')}>
+            <Input
+              placeholder="Search products..."
+              containerStyle={styles.searchContainer}
+              style={styles.searchInput}
+              leftIcon={<Search size={20} color={colors.textSecondary} />}
+              editable={false}
+              pointerEvents="none"
+            />
+          </Pressable>
       </View>
 
       <ScrollView
@@ -115,7 +120,8 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: SPACING,
     paddingBottom: SPACING,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    // paddingTop: Platform.OS === 'ios' ? 0 : 50,
+    gap: SPACING,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     shadowColor: '#000',
@@ -160,5 +166,15 @@ const styles = StyleSheet.create({
   },
   viewAllButton: {
     minHeight: 32,
+  },
+  logo: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 8,
+    paddingTop: 48,
   },
 });

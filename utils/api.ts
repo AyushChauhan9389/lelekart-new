@@ -13,7 +13,9 @@ import type {
   Address,
   Wallet,
   PaymentResponse,
-  PaymentVerificationResponse
+  PaymentVerificationResponse,
+  NotificationPreferences,
+  UserProfile
 } from '@/types/api';
 
 const API_BASE_URL = 'https://lelekart.in';
@@ -22,7 +24,6 @@ export async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // Construct and log the actual headers being sent
   const finalHeaders = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -31,11 +32,10 @@ export async function fetchApi<T>(
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: finalHeaders, // Use the constructed headers
+    headers: finalHeaders,
     credentials: 'include',
   });
   
-  // Log all response headers
   const responseHeaders: { [key: string]: string } = {};
   response.headers.forEach((value: string, key: string) => {
     responseHeaders[key] = value;
@@ -45,7 +45,7 @@ export async function fetchApi<T>(
   if (!response.ok) {
     let errorBody = '';
     try {
-      errorBody = await response.text(); // Try to get error body as text
+      errorBody = await response.text();
     } catch (e) {
       // Ignore if reading body fails
     }
@@ -53,10 +53,9 @@ export async function fetchApi<T>(
     throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorBody}`);
   }
 
-  // Handle potential empty responses for non-GET requests
   const contentType = response.headers.get("content-type");
   if (response.status === 204 || !contentType || !contentType.includes("application/json")) {
-    return {} as T; // Return an empty object or handle as appropriate
+    return {} as T;
   }
 
   const data = await response.json();
@@ -96,11 +95,21 @@ export const api = {
       fetchApi<void>('/api/auth/logout', {
         method: 'POST',
       }),
+    updateProfile: (data: UserProfile) =>
+      fetchApi<User>('/api/user/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    getNotificationPreferences: () =>
+      fetchApi<NotificationPreferences>('/api/user/notification-preferences'),
+    updateNotificationPreferences: (prefs: NotificationPreferences) =>
+      fetchApi<NotificationPreferences>('/api/user/notification-preferences', {
+        method: 'POST',
+        body: JSON.stringify(prefs),
+      }),
   },
   home: {
-    // Update the return type to expect a direct array
     getFeaturedProducts: () => fetchApi<FeaturedHeroProduct[]>('/api/featured-hero-products'),
-    // Update the return type to expect a direct array
     getCategories: () => fetchApi<Category[]>('/api/categories'),
   },
   cart: {
@@ -116,19 +125,17 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ quantity }),
       }),
-    removeItem: (id: number) => // Use fetchApi helper
+    removeItem: (id: number) =>
       fetchApi<void>(`/api/cart/${id}`, {
         method: 'DELETE',
       }),
   },
-  products: { // Ensure products object is correctly defined
+  products: {
     getById: (id: string) => fetchApi<Product>(`/api/products/${id}`),
-    // Add function to get products by category
     getByCategory: (categoryName: string, page = 1, limit = 16) =>
       fetchApi<PaginatedResponse<Product>>(
         `/api/products?category=${encodeURIComponent(categoryName)}&page=${page}&limit=${limit}`
       ),
-    // Add function to get all products with pagination
     getAll: (page = 1, limit = 16) =>
       fetchApi<PaginatedResponse<Product>>(`/api/products?page=${page}&limit=${limit}`),
     search: (query: string) => 

@@ -45,7 +45,7 @@ export default function ProfileScreen() {
         <ProfileOption icon={Package} label="My Orders" onPress={() => router.push('/orders')} />
         <ProfileOption icon={Heart} label="Wishlist" onPress={() => router.push('/(tabs)/wishlist')} />
         <ProfileOption icon={MapPin} label="Saved Addresses" onPress={() => router.push('/addresses')} />
-        <ProfileOption icon={Settings} label="Account Settings" onPress={() => alert('Settings not implemented')} isLast />
+        <ProfileOption icon={Settings} label="Account Settings" onPress={() => router.push('/settings/profile')} isLast />
       </View>
 
       <Button 

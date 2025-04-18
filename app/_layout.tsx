@@ -27,7 +27,8 @@ function useProtectedRoute() {
       (inTabsGroup && segments[1] && protectedTabs.includes(segments[1])) ||
       // Check other protected routes
       segments[0] === 'orders' ||
-      segments[0] === 'addresses'
+      segments[0] === 'addresses' ||
+      segments[0] === 'settings'
     );
 
     if (!user && isProtectedRoute) {
@@ -53,6 +54,8 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="settings/profile" />
+        <Stack.Screen name="settings/notifications" />
         <Stack.Screen
           name="product/[id]"
           options={{

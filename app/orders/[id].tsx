@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { MapPin, Package, Truck, Clock, Calendar, CreditCard } from 'lucide-react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { api } from '@/utils/api';
 import type { Order, OrderItem } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { MapPin, Package, Truck, Clock, Calendar, CreditCard } from 'lucide-react-native';
 
 type TrackingInfo = {
   trackingId?: string;
@@ -34,6 +34,7 @@ export default function OrderDetailScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
 
   const fetchOrderDetails = useCallback(async () => {
     if (!id) {
@@ -54,14 +55,14 @@ export default function OrderDetailScreen() {
       const orderId = Number(id);
       const [orderData, trackingData] = await Promise.all([
         api.orders.getOrderById(orderId),
-        api.orders.getTracking(orderId).catch(() => null) // Tracking might not be available yet
+        api.orders.getTracking(orderId).catch(() => null)
       ]);
       setOrder(orderData);
       setTracking(trackingData);
     } catch (err) {
       console.error('Failed to fetch order details:', err);
       setError('Unable to load order details. Please try again.');
-      setOrder(null); // Clear data on error
+      setOrder(null);
       setTracking(null);
     } finally {
       setIsLoading(false);
@@ -84,11 +85,11 @@ export default function OrderDetailScreen() {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      ...(includeTime && {
+        hour: 'numeric',
+        minute: 'numeric'
+      })
     };
-    if (includeTime) {
-      options.hour = 'numeric';
-      options.minute = 'numeric';
-    }
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
@@ -117,7 +118,6 @@ export default function OrderDetailScreen() {
     }
   };
 
-  // Render Loading State
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -126,7 +126,6 @@ export default function OrderDetailScreen() {
     );
   }
 
-  // Render Error State
   if (error || !order) {
     return (
       <ThemedView style={styles.errorContainer}>
@@ -137,7 +136,6 @@ export default function OrderDetailScreen() {
     );
   }
 
-  // Render Order Details
   return (
     <ThemedView style={styles.container}>
       <ScrollView
@@ -146,7 +144,6 @@ export default function OrderDetailScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Order Summary */}
         <View style={[styles.section, styles.summarySection]}>
           <ThemedText style={styles.orderIdText}>Order #{order.id}</ThemedText>
           <View style={styles.summaryRow}>
@@ -163,7 +160,6 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {/* Tracking Info */}
         {tracking && (tracking.trackingId || tracking.currentLocation || tracking.statusTimeline?.length) && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -202,8 +198,8 @@ export default function OrderDetailScreen() {
                     styles.timelineEvent,
                     index === tracking.statusTimeline!.length - 1 && styles.lastTimelineEvent
                   ]}>
-                    <View style={styles.timelineLine} />
-                    <View style={[styles.timelineDot, index === 0 && styles.firstTimelineDot]} />
+                    <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
+                    <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
                     <View style={styles.timelineContent}>
                       <ThemedText style={styles.timelineStatus}>
                         {event.status.replace(/_/g, ' ').toUpperCase()}
@@ -222,7 +218,6 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Items */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Package size={20} color={colors.text} />
@@ -257,10 +252,9 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {/* Price Summary */}
         <View style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Price Details</ThemedText>
-          <View style={styles.totalSection}>
+          <View style={[styles.totalSection, { borderTopColor: colors.border }]}>
             <View style={styles.priceRow}>
               <ThemedText style={styles.priceLabel}>Subtotal</ThemedText>
               <ThemedText style={styles.priceValue}>
@@ -283,18 +277,17 @@ export default function OrderDetailScreen() {
                 </ThemedText>
               </View>
             )}
-            <View style={[styles.priceRow, styles.finalTotal]}>
-              <ThemedText style={[styles.priceLabel, styles.finalTotalLabel]}>
+            <View style={[styles.priceRow, styles.finalTotal, { borderTopColor: colors.border }]}>
+              <ThemedText style={styles.finalTotalLabel}>
                 Total Paid
               </ThemedText>
-              <ThemedText style={[styles.priceValue, styles.finalTotalValue]}>
+              <ThemedText style={[styles.finalTotalValue, { color: colors.primary }]}>
                 {formatCurrency(order.finalAmount ?? order.total)}
               </ThemedText>
             </View>
           </View>
         </View>
 
-        {/* Shipping Address */}
         {order.shippingDetails && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -325,7 +318,6 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Payment Info */}
         <View style={[styles.section, styles.lastSection]}>
           <View style={styles.sectionHeader}>
             <CreditCard size={20} color={colors.text} />
@@ -349,250 +341,238 @@ export default function OrderDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    textAlign: 'center',
-    opacity: 0.7,
-    fontSize: 16,
-  },
-  section: {
-    padding: 16,
-    backgroundColor: Colors.light.surface,
-    marginBottom: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  lastSection: {
-    marginBottom: 0,
-  },
-  summarySection: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.light.border,
-    marginBottom: 12,
-  },
-  orderIdText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  summaryText: {
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  statusText: {
-    fontWeight: '600',
-    opacity: 1,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  trackingInfo: {
-    marginBottom: 20,
-    gap: 8,
-  },
-  trackingId: {
-    fontWeight: '500',
-  },
-  courier: {
-    opacity: 0.7,
-  },
-  locationInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  location: {
-    flex: 1,
-    opacity: 0.8,
-  },
-  deliveryInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  estimatedDelivery: {
-    flex: 1,
-    opacity: 0.8,
-  },
-  timeline: {
-    paddingLeft: 6, // Align with dot center
-  },
-  timelineEvent: {
-    flexDirection: 'row',
-    position: 'relative',
-    paddingBottom: 24,
-  },
-  timelineLine: {
-    position: 'absolute',
-    left: 5, // Center the line
-    top: 16, // Start below the dot
-    bottom: -8, // Extend slightly past the last event's text
-    width: 2,
-    backgroundColor: Colors.light.border,
-  },
-  lastTimelineEvent: {
-    paddingBottom: 0, // No padding for the last item
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.light.primary,
-    marginRight: 16, // Space between dot and content
-    zIndex: 1, // Ensure dot is above the line
-  },
-  firstTimelineDot: {
-    // Optional: style for the first dot if needed
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  timelineStatus: {
-    fontWeight: '600',
-    marginBottom: 4,
-    fontSize: 14,
-  },
-  timelineDescription: {
-    marginBottom: 4,
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  timelineDate: {
-    fontSize: 12,
-    opacity: 0.6,
-  },
-  itemsList: {
-    gap: 16,
-  },
-  orderItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  itemImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: Colors.light.border, // Placeholder background
-  },
-  itemDetails: {
-    flex: 1,
-  },
-  itemName: {
-    marginBottom: 4,
-    fontSize: 15,
-  },
-  itemQuantity: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  itemPrice: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  totalSection: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.light.border,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  priceLabel: {
-    opacity: 0.7,
-    fontSize: 14,
-  },
-  priceValue: {
-    fontWeight: '500',
-    fontSize: 14,
-  },
-  finalTotal: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.light.border,
-  },
-  finalTotalLabel: {
-    opacity: 1,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  finalTotalValue: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.light.primary,
-  },
-  addressInfo: {
-    gap: 6,
-  },
-  addressName: {
-    fontWeight: '600',
-    fontSize: 15,
-    marginBottom: 4,
-  },
-  addressText: {
-    opacity: 0.8,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  notes: {
-    marginTop: 8,
-    fontStyle: 'italic',
-    opacity: 0.7,
-    fontSize: 14,
-  },
-  paymentInfo: {
-    gap: 6,
-  },
-  paymentMethod: {
-    fontWeight: '500',
-    fontSize: 15,
-  },
-  paymentId: {
-    opacity: 0.7,
-    fontSize: 14,
-  },
-});
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    errorText: {
+      textAlign: 'center',
+      opacity: colorScheme === 'dark' ? 0.5 : 0.7,
+      fontSize: 16,
+    },
+    section: {
+      padding: 16,
+      backgroundColor: colors.surface,
+      marginBottom: 12,
+      ...Platform.select({
+        ios: {
+          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.05,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 1,
+        },
+      }),
+    },
+    lastSection: {
+      marginBottom: 0,
+    },
+    summarySection: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      marginBottom: 12,
+    },
+    orderIdText: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 8,
+    },
+    summaryText: {
+      fontSize: 14,
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+    },
+    statusText: {
+      fontWeight: '600',
+      opacity: 1,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    trackingInfo: {
+      marginBottom: 20,
+      gap: 8,
+    },
+    trackingId: {
+      fontWeight: '500',
+    },
+    locationInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    location: {
+      flex: 1,
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+    },
+    deliveryInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    estimatedDelivery: {
+      flex: 1,
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+    },
+    timeline: {
+      paddingLeft: 6,
+    },
+    timelineEvent: {
+      flexDirection: 'row',
+      position: 'relative',
+      paddingBottom: 24,
+    },
+    timelineLine: {
+      position: 'absolute',
+      left: 5,
+      top: 16,
+      bottom: -8,
+      width: 2,
+    },
+    lastTimelineEvent: {
+      paddingBottom: 0,
+    },
+    timelineDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      marginRight: 16,
+      zIndex: 1,
+    },
+    timelineContent: {
+      flex: 1,
+    },
+    timelineStatus: {
+      fontWeight: '600',
+      marginBottom: 4,
+      fontSize: 14,
+    },
+    timelineDescription: {
+      marginBottom: 4,
+      fontSize: 14,
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+    },
+    timelineDate: {
+      fontSize: 12,
+      opacity: colorScheme === 'dark' ? 0.5 : 0.6,
+    },
+    itemsList: {
+      gap: 16,
+    },
+    orderItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    itemImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+    },
+    itemDetails: {
+      flex: 1,
+    },
+    itemName: {
+      marginBottom: 4,
+      fontSize: 15,
+    },
+    itemQuantity: {
+      fontSize: 14,
+      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
+    },
+    itemPrice: {
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    totalSection: {
+      marginTop: 24,
+      paddingTop: 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    priceLabel: {
+      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
+      fontSize: 14,
+    },
+    priceValue: {
+      fontWeight: '500',
+      fontSize: 14,
+    },
+    finalTotal: {
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    finalTotalLabel: {
+      opacity: 1,
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    finalTotalValue: {
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    addressInfo: {
+      gap: 6,
+    },
+    addressName: {
+      fontWeight: '600',
+      fontSize: 15,
+      marginBottom: 4,
+    },
+    addressText: {
+      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    notes: {
+      marginTop: 8,
+      fontStyle: 'italic',
+      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
+      fontSize: 14,
+    },
+    paymentInfo: {
+      gap: 6,
+    },
+    paymentMethod: {
+      fontWeight: '500',
+      fontSize: 15,
+    },
+    paymentId: {
+      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
+      fontSize: 14,
+    },
+  });
