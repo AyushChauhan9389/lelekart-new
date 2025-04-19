@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Image } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, Stack } from 'expo-router';
+import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { MapPin, Package, Truck, Clock, Calendar, CreditCard } from 'lucide-react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -118,26 +119,30 @@ export default function OrderDetailScreen() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || error || !order) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </ThemedView>
-    );
-  }
-
-  if (error || !order) {
-    return (
-      <ThemedView style={styles.errorContainer}>
-        <ThemedText style={styles.errorText}>
-          {error || 'Order not found'}
-        </ThemedText>
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title={`Order #${id}`} />
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>
+              {error || 'Order not found'}
+            </ThemedText>
+          </View>
+        )}
       </ThemedView>
     );
   }
 
   return (
     <ThemedView style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title={`Order #${id}`} />
       <ScrollView
         style={styles.scrollView}
         refreshControl={

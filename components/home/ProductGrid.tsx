@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dimensions, Image, Pressable, StyleSheet, View, FlatList } from 'react-native';
+import { Dimensions, Image, Pressable, StyleSheet, View, FlatList, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -41,13 +41,15 @@ export function ProductGrid({ data }: ProductGridProps) {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  // Generate styles dynamically based on colors
+  const styles = React.useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
 
   const renderItem = ({ item }: { item: Product }) => {
     const imageSource = { uri: item.image_url || 'https://lelekart.in/images/electronics.svg' };
 
     return (
       <Pressable
-        style={[styles.item, { backgroundColor: colors.card }]}
+        style={[styles.item, { backgroundColor: colors.card }]} // Keep dynamic background color here
         onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id.toString() } })}
       >
         <Image source={imageSource} style={styles.image} />
@@ -60,7 +62,12 @@ export function ProductGrid({ data }: ProductGridProps) {
               ₹{item.price}
             </ThemedText>
             {item.mrp > item.price && (
-              <ThemedText style={styles.mrp}>₹{item.mrp}</ThemedText>
+              <>
+                <ThemedText style={styles.mrp}>₹{item.mrp}</ThemedText>
+                <ThemedText style={styles.discount}>
+                  {Math.round(((item.mrp - item.price) / item.mrp) * 100)}% off
+                </ThemedText>
+              </>
             )}
           </View>
         </View>
@@ -87,9 +94,10 @@ export function ProductGrid({ data }: ProductGridProps) {
   );
 }
 
-const styles = StyleSheet.create({
+// Moved StyleSheet creation into a function that accepts colors
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) => StyleSheet.create({
   container: {
-    padding: SPACING,
+    padding: SPACING, // Keep padding on the outer container
   },
   listContentContainer: {
     // Empty for now as padding is handled by container
@@ -101,15 +109,19 @@ const styles = StyleSheet.create({
   item: {
     flex: 1,
     margin: SPACING / 2,
-    maxWidth: (WINDOW_WIDTH - SPACING * 3) / 2,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: Colors.light.background,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: colorScheme === 'dark' ? '#000' : '#666',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   image: {
     width: '100%',
@@ -117,28 +129,36 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   content: {
-    padding: 10,
+    padding: SPACING,
+    backgroundColor: colors.card,
   },
   name: {
     fontSize: WINDOW_WIDTH < 380 ? 13 : 14,
-    marginBottom: 6,
+    marginBottom: SPACING / 2,
     lineHeight: 20,
     minHeight: 40,
+    opacity: 0.9,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING,
+    marginTop: SPACING / 2,
   },
   price: {
-    fontSize: WINDOW_WIDTH < 380 ? 15 : 17,
-    fontWeight: '600',
-    color: Colors.light.primary,
+    fontSize: WINDOW_WIDTH < 380 ? 16 : 18,
+    fontWeight: '700',
+    color: colors.primary,
   },
   mrp: {
-    fontSize: 12,
+    fontSize: WINDOW_WIDTH < 380 ? 12 : 13,
     textDecorationLine: 'line-through',
-    opacity: 0.6,
+    opacity: 0.5,
+  },
+  discount: {
+    fontSize: WINDOW_WIDTH < 380 ? 11 : 12,
+    color: colors.success,
+    fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',

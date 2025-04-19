@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -51,6 +52,14 @@ export function CategoryList({ data, limit, onViewAll }: CategoryListProps) {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const styles = React.useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
+
+  // Memoize the sorted and limited data
+  const sortedAndLimitedData = React.useMemo(() => {
+    return data
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .slice(0, limit);
+  }, [data, limit]);
 
   const renderItem = ({ item }: { item: Category }) => (
     // Re-add Pressable and onPress handler to navigate using object syntax
@@ -72,9 +81,7 @@ export function CategoryList({ data, limit, onViewAll }: CategoryListProps) {
   return (
     <View style={styles.container}>
       <FlatList
-        data={data
-          .sort((a, b) => a.displayOrder - b.displayOrder)
-          .slice(0, limit)}
+        data={sortedAndLimitedData} // Use memoized data
         renderItem={renderItem}
         numColumns={columns}
         contentContainerStyle={styles.list}
@@ -90,7 +97,7 @@ export function CategoryList({ data, limit, onViewAll }: CategoryListProps) {
             onPress={onViewAll}
             style={styles.viewAllButton}
           >
-            View All Categories
+            <ThemedText>View All Categories</ThemedText>
           </Button>
         </View>
       )}
@@ -98,7 +105,7 @@ export function CategoryList({ data, limit, onViewAll }: CategoryListProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) => StyleSheet.create({
   container: {
     paddingHorizontal: SPACING, // Only horizontal padding for container
     paddingVertical: SPACING,
@@ -123,28 +130,37 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: SPACING,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    minHeight: ITEM_WIDTH, // Make card height equal to width for square aspect
+    backgroundColor: colors.card,
+    minHeight: ITEM_WIDTH,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: colorScheme === 'dark' ? '#000' : '#666',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   image: {
-    width: ITEM_WIDTH * 0.6,
-    height: ITEM_WIDTH * 0.6,
+    width: ITEM_WIDTH * 0.65,
+    height: ITEM_WIDTH * 0.65,
     resizeMode: 'contain',
     marginBottom: SPACING,
   },
   name: {
-    fontSize: WINDOW_WIDTH < 380 ? 11 : 13,
+    fontSize: WINDOW_WIDTH < 380 ? 12 : 14,
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: SPACING / 2,
+    opacity: 0.9,
     paddingHorizontal: 4,
   },
 });

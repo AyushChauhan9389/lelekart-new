@@ -1,40 +1,40 @@
-const tintColorLight = '#007AFF';
-const tintColorDark = '#0A84FF';
+const tintColorLight = '#3B82F6'; // Softer Blue
+const tintColorDark = '#60A5FA'; // Lighter Blue for Dark Mode
 
 export default {
   light: {
-    primary: '#007AFF',
-    primaryLight: '#47A3FF',
-    primaryDark: '#0055B3',
-    secondary: '#64748B',
+    primary: tintColorLight, // Updated
+    primaryLight: '#93C5FD', // Adjusted Light variant
+    primaryDark: '#2563EB',  // Adjusted Dark variant
+    secondary: '#6B7280', // Slightly darker secondary
     background: '#FFFFFF',
-    surface: '#F8FAFC',
+    surface: '#F9FAFB', // Slightly off-white surface
     card: '#FFFFFF',
-    text: '#1E293B',
-    textSecondary: '#64748B',
-    border: '#E2E8F0',
+    text: '#111827', // Darker text for better contrast
+    textSecondary: '#6B7280', // Consistent secondary text
+    border: '#E5E7EB', // Lighter border
     tint: tintColorLight,
-    tabIconDefault: '#94A3B8',
+    tabIconDefault: '#9CA3AF', // Adjusted default icon color
     tabIconSelected: tintColorLight,
-    success: '#22C55E',
+    success: '#10B981', // Slightly adjusted success green
     error: '#EF4444',
     warning: '#F59E0B',
   },
   dark: {
-    primary: '#0A84FF',
-    primaryLight: '#47A3FF',
-    primaryDark: '#0055B3',
-    secondary: '#94A3B8',
-    background: '#0F172A',
-    surface: '#1E293B',
-    card: '#1E293B',
-    text: '#F8FAFC',
-    textSecondary: '#94A3B8',
-    border: '#334155',
+    primary: tintColorDark, // Updated
+    primaryLight: '#93C5FD', // Adjusted Light variant
+    primaryDark: '#3B82F6',  // Adjusted Dark variant
+    secondary: '#9CA3AF', // Lighter secondary for dark mode
+    background: '#111827', // Darker background
+    surface: '#1F2937', // Slightly lighter surface
+    card: '#1F2937',
+    text: '#F9FAFB', // Slightly off-white text
+    textSecondary: '#9CA3AF', // Consistent secondary text
+    border: '#374151', // Adjusted border
     tint: tintColorDark,
-    tabIconDefault: '#64748B',
+    tabIconDefault: '#6B7280', // Adjusted default icon color
     tabIconSelected: tintColorDark,
-    success: '#22C55E',
+    success: '#10B981',
     error: '#EF4444',
     warning: '#F59E0B',
   },

@@ -106,17 +106,21 @@ export function Button({
       ]}>
       <View style={styles.content}>
         {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
-        <Text
-          style={[
-            styles.text,
-            {
-              color: getTextColor(),
-              fontSize: size === 'sm' ? 14 : size === 'lg' ? 18 : 16,
-            },
-            textStyle,
-          ]}>
-          {children}
-        </Text>
+        {typeof children === 'string' ? (
+          <Text
+            style={[
+              styles.text,
+              {
+                color: getTextColor(),
+                fontSize: size === 'sm' ? 14 : size === 'lg' ? 18 : 16,
+              },
+              textStyle,
+            ]}>
+            {children}
+          </Text>
+        ) : (
+          children
+        )}
         {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
       </View>
     </Pressable>

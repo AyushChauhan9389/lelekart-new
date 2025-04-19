@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StyleSheet, View, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { Bell } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -56,10 +57,8 @@ export default function ProfileSettingsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <ThemedText style={styles.headerTitle}>Profile Settings</ThemedText>
-      </View>
-
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title="Profile Settings" />
       <View style={styles.content}>
         <Input
           label="Username"
@@ -129,29 +128,6 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
   StyleSheet.create({
     container: {
       flex: 1,
-    },
-    header: {
-      paddingHorizontal: 16,
-      paddingBottom: 16,
-      paddingTop: Platform.OS === 'ios' ? 60 : 40,
-      borderBottomLeftRadius: 20,
-      borderBottomRightRadius: 20,
-      ...Platform.select({
-        ios: {
-          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
-          shadowRadius: 4,
-        },
-        android: {
-          elevation: 3,
-        },
-      }),
-    },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: 'white',
     },
     content: {
       padding: 16,

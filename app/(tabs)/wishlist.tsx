@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Pressable, Image } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
@@ -95,9 +96,8 @@ export default function WishlistScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <ThemedText style={styles.headerTitle}>My Wishlist</ThemedText>
-      </View>
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title="My Wishlist" />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -158,29 +158,6 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
   StyleSheet.create({
     container: {
       flex: 1,
-    },
-    header: {
-      paddingHorizontal: 16,
-      paddingBottom: 16,
-      paddingTop: Platform.OS === 'ios' ? 60 : 40,
-      borderBottomLeftRadius: 20,
-      borderBottomRightRadius: 20,
-      ...Platform.select({
-        ios: {
-          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
-          shadowRadius: 4,
-        },
-        android: {
-          elevation: 3,
-        },
-      }),
-    },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: 'white',
     },
     loadingContainer: {
       flex: 1,

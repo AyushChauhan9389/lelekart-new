@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, Pressable, RefreshControl, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
@@ -134,6 +135,8 @@ export default function OrdersScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title="My Orders" />
       <ScrollView
         style={styles.scrollView}
         refreshControl={

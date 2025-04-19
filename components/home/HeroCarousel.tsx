@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  Animated,
+  // Animated, // Removed duplicate import from react-native
   Dimensions,
   Image,
   Pressable,
@@ -8,9 +8,16 @@ import {
   View,
   ViewabilityConfig,
   ViewToken,
+  FlatList, // Import standard FlatList
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated'; // Import Reanimated hooks
 import { router } from 'expo-router';
-import { FlatList } from 'react-native-gesture-handler';
 import { Button } from '@/components/ui/Button';
 import { ThemedText } from '@/components/ThemedText';
 import type { FeaturedHeroProduct } from '@/types/api';
@@ -25,12 +32,20 @@ const { width: WINDOW_WIDTH } = Dimensions.get('window');
 const ITEM_WIDTH = Math.min(WINDOW_WIDTH, 1200); // Cap maximum width
 const ITEM_HEIGHT = WINDOW_WIDTH >= 768 ? 400 : WINDOW_WIDTH >= 480 ? 300 : 250; // Responsive height
 
+// Create Animated FlatList component
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<FeaturedHeroProduct>);
+
 export function HeroCarousel({ data }: HeroCarouselProps) {
   const colorScheme = useColorScheme(); // Get current color scheme
   const colors = Colors[colorScheme ?? 'light']; // Get theme colors
   const [activeIndex, setActiveIndex] = useState(0);
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const flatListRef = useRef<FlatList>(null);
+  const scrollX = useSharedValue(0); // Use useSharedValue
+  const flatListRef = useRef<FlatList<FeaturedHeroProduct>>(null); // Add type to ref
+
+  // Define the scroll handler using useAnimatedScrollHandler
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollX.value = event.contentOffset.x;
+  });
 
   const viewabilityConfig: ViewabilityConfig = {
     itemVisiblePercentThreshold: 50,
@@ -57,28 +72,35 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
       {/* Use ImageBackground for simpler layout */}
       <Image source={{ uri: item.url }} style={StyleSheet.absoluteFill} />
       <View style={styles.overlay}>
-        <ThemedText type="title" style={styles.title}>
-          {item.title}
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>{item.subtitle}</ThemedText>
+        {/* Add checks for text content before rendering */}
+        {item.title && (
+          <ThemedText type="title" style={styles.title}>
+            {item.title}
+          </ThemedText>
+        )}
+        {item.subtitle && (
+          <ThemedText style={styles.subtitle}>{item.subtitle}</ThemedText>
+        )}
         {/* Display badge if available */}
         {item.badgeText && (
-          <View style={styles.badge}>
+          <View style={[styles.badge, { backgroundColor: colors.error }]}> {/* Use theme color */}
             <ThemedText style={styles.badgeText}>{item.badgeText}</ThemedText>
           </View>
         )}
-        <Button
-          onPress={() => {
-            if (item.productId) {
-              router.push(`/product/${item.productId}`);
-            }
-            // Optionally handle category navigation if needed
-          }}
-          // Apply specific styles for this context, merging them into one object
-          style={{ ...styles.button, backgroundColor: 'white' }}
-          textStyle={{ color: colors.text }}>
-          {item.buttonText}
-        </Button>
+        {/* Add check for button text */}
+        {item.buttonText && (
+          <Button
+              variant="secondary"
+              onPress={() => {
+                if (item.productId) {
+                  router.push(`/product/${item.productId}`);
+                }
+              }}
+              style={styles.button}
+            >
+              <ThemedText style={{ color: 'white' }}>{item.buttonText}</ThemedText>
+            </Button>
+        )}
       </View>
     </Pressable>
   );
@@ -87,22 +109,32 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
     return (
       <View style={styles.pagination}>
         {data.map((_, index) => {
-          const inputRange = [
-            (index - 1) * ITEM_WIDTH,
-            index * ITEM_WIDTH,
-            (index + 1) * ITEM_WIDTH,
-          ];
+          // Use useAnimatedStyle for each dot
+          const animatedDotStyle = useAnimatedStyle(() => {
+            const inputRange = [
+              (index - 1) * ITEM_WIDTH,
+              index * ITEM_WIDTH,
+              (index + 1) * ITEM_WIDTH,
+            ];
 
-          const scale = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.8, 1.2, 0.8],
-            extrapolate: 'clamp',
-          });
+            const scale = interpolate(
+              scrollX.value, // Use shared value
+              inputRange,
+              [0.8, 1.2, 0.8],
+              Extrapolation.CLAMP // Use Extrapolation enum
+            );
 
-          const opacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.4, 1, 0.4],
-            extrapolate: 'clamp',
+            const opacity = interpolate(
+              scrollX.value, // Use shared value
+              inputRange,
+              [0.4, 1, 0.4],
+              Extrapolation.CLAMP // Use Extrapolation enum
+            );
+
+            return {
+              transform: [{ scale }],
+              opacity,
+            };
           });
 
           return (
@@ -110,11 +142,8 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
               key={index}
               style={[
                 styles.dot,
-                {
-                  transform: [{ scale }],
-                  opacity,
-                  backgroundColor: 'white',
-                },
+                { backgroundColor: colors.primary }, // Static background color
+                animatedDotStyle, // Apply animated styles
               ]}
             />
           );
@@ -125,7 +154,7 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
 
   return (
     <View>
-      <FlatList
+      <AnimatedFlatList // Use AnimatedFlatList
         ref={flatListRef}
         data={data}
         renderItem={renderItem}
@@ -133,12 +162,11 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         bounces={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
-        )}
+        onScroll={scrollHandler} // Use the animated scroll handler
+        scrollEventThrottle={16} // Recommended for useAnimatedScrollHandler
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        contentContainerStyle={{ alignItems: 'center' }}
       />
       {renderDotIndicator()}
     </View>
@@ -179,13 +207,13 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
-    shadowRadius: 1,
-  },
-  badge: {
-    backgroundColor: 'red', // Example badge style
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+     shadowRadius: 1,
+   },
+   badge: {
+     // backgroundColor set inline using theme color
+     paddingHorizontal: 8,
+     paddingVertical: 4,
+     borderRadius: 4,
     position: 'absolute',
     top: 10,
     right: 10,
@@ -202,7 +230,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minWidth: WINDOW_WIDTH >= 768 ? 160 : undefined,
   },
-  // Keep pagination styles
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -211,6 +238,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 0,
     right: 0,
+    zIndex: 1,
   },
   dot: {
     width: WINDOW_WIDTH >= 768 ? 10 : 8,

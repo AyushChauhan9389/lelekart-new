@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { AddressForm } from '@/components/address/AddressForm';
+import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { api } from '@/utils/api';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  }
+});
 
 export default function NewAddressScreen() {
-  return (
-    <>
-      <Stack.Screen options={{ 
-        title: 'Add New Address',
-        headerBackTitle: 'Back'
-      }} />
-      <NewAddressContent />
-    </>
-  );
+  return <NewAddressContent />;
 }
 
 function NewAddressContent() {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (formData: Parameters<typeof api.addresses.add>[0]) => {
@@ -35,7 +38,9 @@ function NewAddressContent() {
   };
 
   return (
-    <ThemedView style={{ flex: 1, backgroundColor: 'white' }}>
+    <ThemedView style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title="Add New Address" />
       <AddressForm
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}

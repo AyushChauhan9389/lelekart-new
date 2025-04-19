@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { ScrollView, StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
+import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ProductGrid } from '@/components/home/ProductGrid';
@@ -44,32 +45,8 @@ export default function CategoryScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: name ? decodeURIComponent(name) : 'Category',
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: colors.background,
-            ...Platform.select({
-              ios: {
-                shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
-                shadowRadius: 4,
-              },
-              android: {
-                elevation: 4,
-              },
-            }),
-          },
-          headerShadowVisible: true,
-          headerTintColor: colors.text,
-          headerTitleStyle: {
-            color: colors.text,
-          },
-          headerTitleAlign: 'center',
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title={name ? decodeURIComponent(name) : 'Category'} />
       {isLoading ? (
         <View style={styles.centeredContainer}>
           <ActivityIndicator size="large" color={colors.primary} />

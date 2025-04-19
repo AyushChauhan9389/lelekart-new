@@ -1,12 +1,15 @@
-import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View, Platform, Dimensions, Pressable } from 'react-native';
+import React, { useCallback, useState, useMemo } from 'react'; // Added useMemo
+import { RefreshControl, ScrollView, StyleSheet, View, Dimensions } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
-import { Search } from 'lucide-react-native';
-import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { HomeHeader } from '@/components/home/HomeHeader';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
 import { CategoryList } from '@/components/home/CategoryList';
 import { ProductGrid } from '@/components/home/ProductGrid';
+// Import Skeleton Components
+import { HeroCarouselSkeleton } from '@/components/home/skeletons/HeroCarouselSkeleton';
+import { CategoryListSkeleton } from '@/components/home/skeletons/CategoryListSkeleton';
+import { ProductGridSkeleton } from '@/components/home/skeletons/ProductGridSkeleton';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import Colors from '@/constants/Colors';
@@ -23,6 +26,8 @@ export default function HomeScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  // Generate styles dynamically based on colors
+  const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
 
   const fetchHomeData = async () => {
     setIsLoading(true);
@@ -30,12 +35,12 @@ export default function HomeScreen() {
       const [featuredData, categoriesData, productsData] = await Promise.all([
         api.home.getFeaturedProducts(),
         api.home.getCategories(),
-        fetch('https://lelekart.in/api/products').then((res) => res.json() as Promise<PaginatedResponse<Product>>),
+        api.products.getAll(1, 6), // Use api utility and limit to 6
       ]);
 
       if (featuredData) setFeaturedProducts(featuredData);
       if (categoriesData) setCategories(categoriesData);
-      if (productsData.products) setProducts(productsData.products);
+      if (productsData?.products) setProducts(productsData.products); // Access products from PaginatedResponse
     } catch (error) {
       console.error('Error fetching home data:', error);
     } finally {
@@ -51,130 +56,116 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        
-          <ThemedText style={styles.logo}>LeleKart</ThemedText>
-          <Pressable onPress={() => router.push('/(tabs)/search')}>
-            <Input
-              placeholder="Search products..."
-              containerStyle={styles.searchContainer}
-              style={styles.searchInput}
-              leftIcon={<Search size={20} color={colors.textSecondary} />}
-              editable={false}
-              pointerEvents="none"
-            />
-          </Pressable>
-      </View>
+      <HomeHeader />
 
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchHomeData} />}>
-        {featuredProducts?.length > 0 && (
-          <View style={styles.section}>
-            <HeroCarousel data={featuredProducts} />
-          </View>
-        )}
-        {categories?.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Shop by Category</ThemedText>
-              <Button 
-                variant="ghost"
-                onPress={() => router.push('/categories')}
-                style={styles.viewAllButton}
-              >
-                View All
-              </Button>
+        // Only show RefreshControl when not initially loading
+        refreshControl={!isLoading ? <RefreshControl refreshing={false} onRefresh={fetchHomeData} /> : undefined}>
+        {isLoading ? (
+          // Show Skeletons when loading
+          <>
+            <View style={styles.section}>
+              <HeroCarouselSkeleton />
             </View>
-            <CategoryList data={categories} limit={6} />
-          </View>
-        )}
-        {products?.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Latest Products</ThemedText>
-              <Button 
-                variant="ghost"
-                onPress={() => router.push('/(tabs)/explore')}
-                style={styles.viewAllButton}
-              >
-                View All
-              </Button>
+            <View style={styles.section}>
+              <CategoryListSkeleton />
             </View>
-            <ProductGrid data={products.slice(0, 6)} />
-          </View>
+            <View style={styles.section}>
+              <ProductGridSkeleton />
+            </View>
+          </>
+        ) : (
+          // Show actual content when loaded
+          <>
+            {featuredProducts?.length > 0 && (
+              <View style={styles.section}>
+                <HeroCarousel data={featuredProducts} />
+              </View>
+            )}
+            {categories?.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="subtitle" style={styles.sectionTitle}>Shop by Category</ThemedText>
+                  <Button
+                    variant="ghost"
+                    onPress={() => router.push('/categories')}
+                    style={styles.viewAllButton}
+                  >
+                    <ThemedText>View All</ThemedText>
+                  </Button>
+                </View>
+                <CategoryList data={categories} limit={6} />
+              </View>
+            )}
+            {products?.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="subtitle" style={styles.sectionTitle}>Latest Products</ThemedText>
+                  <Button
+                    variant="ghost"
+                    onPress={() => router.push('/(tabs)/explore')}
+                    style={styles.viewAllButton}
+                  >
+                    <ThemedText>View All</ThemedText>
+                  </Button>
+                </View>
+                <ProductGrid data={products.slice(0, 6)} />
+              </View>
+            )}
+            {/* Add a fallback case if all content is empty after loading */}
+            {!isLoading && featuredProducts?.length === 0 && categories?.length === 0 && products?.length === 0 && (
+              <View style={styles.emptyContainer}>
+                 <ThemedText>No content available.</ThemedText>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </ThemedView>
   );
 }
 
+// Define constants outside createStyles
 const WINDOW_WIDTH = Dimensions.get('window').width;
 const SPACING = WINDOW_WIDTH < 380 ? 12 : 16;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: SPACING,
-    paddingBottom: SPACING,
-    // paddingTop: Platform.OS === 'ios' ? 0 : 50,
-    gap: SPACING,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchContainer: {
-    marginBottom: 0,
-    maxWidth: 600,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  searchInput: {
-    backgroundColor: Colors.light.background,
-    borderRadius: 20,
-    paddingVertical: WINDOW_WIDTH < 380 ? 8 : 10,
-    fontSize: WINDOW_WIDTH < 380 ? 14 : 16,
-  },
-  content: {
-    flexGrow: 1,
-    paddingBottom: SPACING * 2,
-  },
-  section: {
-    marginTop: SPACING,
-    marginBottom: SPACING,
-    width: '100%',
-    maxWidth: 1200,
-    alignSelf: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING,
-    marginBottom: SPACING,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  viewAllButton: {
-    minHeight: 32,
-  },
-  logo: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: 8,
-    paddingTop: 48,
-  },
-});
+// createStyles function to generate styles based on colors
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    content: {
+      flexGrow: 1,
+      paddingBottom: SPACING * 2,
+    },
+    section: {
+      marginTop: SPACING,
+      marginBottom: SPACING,
+      width: '100%',
+      maxWidth: 1200,
+      alignSelf: 'center',
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: SPACING,
+      marginBottom: SPACING,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    viewAllButton: {
+      minHeight: 32,
+    },
+    emptyContainer: { // Style for the fallback message
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: SPACING * 2,
+    },
+  });

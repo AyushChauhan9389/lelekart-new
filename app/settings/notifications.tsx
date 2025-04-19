@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Platform, Switch, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { StyleSheet, View, Platform, Switch, ScrollView, ActivityIndicator } from 'react-native';
+import { router, Stack } from 'expo-router';
+import { NavigationHeader } from '@/components/ui/NavigationHeader'; // Ensure import
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
@@ -79,14 +80,24 @@ export default function NotificationSettingsScreen() {
     { key: 'paymentReminders', label: 'Payment Reminders' },
   ] as const;
 
+  // Add loading state handling
+  if (isLoading) {
+     return (
+       <ThemedView style={styles.container}>
+         <Stack.Screen options={{ headerShown: false }} />
+         <NavigationHeader title="Notification Settings" />
+         <View style={styles.loadingContainer}>
+           {/* You can replace this with a skeleton loader if preferred */}
+           <ActivityIndicator size="large" color={colors.primary} />
+         </View>
+       </ThemedView>
+     );
+  }
+
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <ThemedText style={styles.headerTitle}>
-          Notification Settings
-        </ThemedText>
-      </View>
-
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title="Notification Settings" />
       <ScrollView style={styles.content}>
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Notification Types</ThemedText>
@@ -129,7 +140,7 @@ export default function NotificationSettingsScreen() {
 
         <Button
           onPress={handleSave}
-          disabled={isLoading || isSaving}
+          disabled={isSaving} // Only disable when saving, not loading initial prefs
           style={styles.saveButton}
         >
           {isSaving ? 'Saving...' : 'Save Preferences'}
@@ -144,28 +155,10 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     container: {
       flex: 1,
     },
-    header: {
-      paddingHorizontal: 16,
-      paddingBottom: 16,
-      paddingTop: Platform.OS === 'ios' ? 60 : 40,
-      borderBottomLeftRadius: 20,
-      borderBottomRightRadius: 20,
-      ...Platform.select({
-        ios: {
-          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
-          shadowRadius: 4,
-        },
-        android: {
-          elevation: 3,
-        },
-      }),
-    },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: 'white',
+    loadingContainer: { // Added loading container style
+       flex: 1,
+       justifyContent: 'center',
+       alignItems: 'center',
     },
     content: {
       flex: 1,
