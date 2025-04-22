@@ -9,6 +9,8 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { api } from '@/utils/api';
 import type { NotificationPreferences } from '@/types/api';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 
 const defaultPreferences: NotificationPreferences = {
   orderUpdates: true,
@@ -24,27 +26,35 @@ const defaultPreferences: NotificationPreferences = {
 
 export default function NotificationSettingsScreen() {
   const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // For preferences loading
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
 
   useEffect(() => {
-    loadPreferences();
-  }, []);
+    // Only load preferences if logged in
+    if (user) {
+      loadPreferences();
+    } else {
+      setIsLoading(false); // Don't show loading if not logged in
+    }
+  }, [user]); // Depend on user
 
   const loadPreferences = async () => {
+    setIsLoading(true); // Start loading prefs
     try {
+      setError('');
       const prefs = await api.auth.getNotificationPreferences();
       setPreferences(prefs);
     } catch (err) {
       setError('Failed to load notification preferences');
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Stop loading prefs
     }
   };
 
@@ -80,20 +90,31 @@ export default function NotificationSettingsScreen() {
     { key: 'paymentReminders', label: 'Payment Reminders' },
   ] as const;
 
-  // Add loading state handling
-  if (isLoading) {
-     return (
-       <ThemedView style={styles.container}>
-         <Stack.Screen options={{ headerShown: false }} />
-         <NavigationHeader title="Notification Settings" />
-         <View style={styles.loadingContainer}>
-           {/* You can replace this with a skeleton loader if preferred */}
-           <ActivityIndicator size="large" color={colors.primary} />
-         </View>
-       </ThemedView>
-     );
+  // Show loading indicator for auth or preferences
+  if (isAuthLoading || isLoading) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="Notification Settings" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </ThemedView>
+    );
   }
 
+  // Show login prompt if not logged in
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="Notification Settings" />
+        <LoginPrompt />
+      </ThemedView>
+    );
+  }
+
+  // Render settings form if logged in
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -155,10 +176,10 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     container: {
       flex: 1,
     },
-    loadingContainer: { // Added loading container style
-       flex: 1,
-       justifyContent: 'center',
-       alignItems: 'center',
+    loadingContainer: { // Style for loading indicator
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     content: {
       flex: 1,

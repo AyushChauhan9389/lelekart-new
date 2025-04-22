@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Pressable, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ShoppingCart } from 'lucide-react-native';
+import { Bell } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -13,59 +13,37 @@ const { width: WINDOW_WIDTH } = Dimensions.get('window');
 export function HomeHeader() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [cartCount, setCartCount] = React.useState(0);
-
-  // Fetch cart count
-  React.useEffect(() => {
-    const fetchCartCount = async () => {
-      try {
-        const items = await api.cart.getItems();
-        setCartCount(items.length);
-      } catch (error) {
-        if (error instanceof Error && !error.message.includes('401')) {
-          console.error('Failed to fetch cart count:', error);
-        }
-      }
-    };
-    fetchCartCount();
-  }, []);
-
+  const styles = React.useMemo(() => createStyles(colors), [colors]); // Use useMemo and createStyles
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
       <View style={[styles.container, { borderBottomColor: colors.border }]}>
         {/* Left Section (Location) */}
-        <Pressable style={styles.locationButton} onPress={() => router.push('/addresses')}>
-          <ThemedText numberOfLines={1} style={styles.locationLabel}>
-            Deliver to
-          </ThemedText>
-          <View style={styles.locationRow}>
-            <ThemedText numberOfLines={1} style={styles.location}>
-              Mumbai, 400001
+        <View style={styles.leftContainer}>
+          <Pressable style={styles.locationButton} onPress={() => router.push('/addresses')}>
+            <ThemedText numberOfLines={1} style={styles.locationLabel}>
+              Deliver to
             </ThemedText>
-          </View>
-        </Pressable>
+            <View style={styles.locationRow}>
+              <ThemedText numberOfLines={1} style={styles.location}>
+                Mumbai, 400001
+              </ThemedText>
+            </View>
+          </Pressable>
+        </View>
+
+        {/* Center Section (Logo) */}
+        <View style={styles.centerContainer}>
+          <ThemedText style={styles.logoText}>LeleKart</ThemedText>
+        </View>
 
         {/* Right Section (Icons) */}
-        <View style={styles.iconContainer}>
+        <View style={styles.rightContainer}>
+          {/* Single notification icon */}
           <Pressable
             onPress={() => router.push('/settings/notifications')}
             style={styles.iconButton}
           >
             <Bell size={24} color={colors.text} />
-          </Pressable>
-          
-          <Pressable
-            onPress={() => router.push('/(tabs)/cart')}
-            style={styles.iconButton}
-          >
-            <ShoppingCart size={24} color={colors.text} />
-            {cartCount > 0 && (
-              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                <ThemedText style={styles.badgeText}>
-                  {cartCount}
-                </ThemedText>
-              </View>
-            )}
           </Pressable>
         </View>
       </View>
@@ -81,18 +59,33 @@ export function HomeHeader() {
   );
 }
 
-const styles = StyleSheet.create({
+// Moved StyleSheet creation into a function that accepts colors
+const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: WINDOW_WIDTH >= 768 ? 24 : 16,
+    paddingVertical: WINDOW_WIDTH >= 768 ? 12 : 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  leftContainer: {
+    flex: 2, // Increased flex to give more space
+    alignItems: 'flex-start',
+    marginRight: 8,
+  },
+  centerContainer: {
+    flex: 3, // Give more space to center
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  rightContainer: {
+    flex: 2, // Match left container flex
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   locationButton: {
-    flex: 1,
-    marginRight: 16,
+    paddingRight: 8,
   },
   locationLabel: {
     fontSize: 12,
@@ -106,30 +99,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  iconContainer: {
+  logoText: {
+    fontSize: WINDOW_WIDTH >= 768 ? 26 : 22,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  iconContainer: { // Renamed to rightContainer styles
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconButton: {
     padding: 8,
-    marginLeft: 8,
-    position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   searchButton: {
     margin: 12,

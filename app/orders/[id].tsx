@@ -9,6 +9,8 @@ import { api } from '@/utils/api';
 import type { Order, OrderItem } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 
 type TrackingInfo = {
   trackingId?: string;
@@ -36,11 +38,19 @@ export default function OrderDetailScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
+  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
 
   const fetchOrderDetails = useCallback(async () => {
-    if (!id) {
-      setError('No Order ID provided');
+    // Don't fetch if not logged in
+    if (!user || !id) {
+      setError(!id ? 'No Order ID provided' : null); // Set error only if ID is missing
       setIsLoading(false);
+      return;
+    }
+
+    if (isNaN(Number(id))) {
+      setError('Invalid Order ID');
+      setIsLoading(false); // Stop loading if not logged in or no ID
       return;
     }
 
@@ -49,7 +59,7 @@ export default function OrderDetailScreen() {
       setIsLoading(false);
       return;
     }
-    
+
     setIsLoading(true);
     try {
       setError(null);
@@ -68,7 +78,7 @@ export default function OrderDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, user]); // Add user dependency
 
   useEffect(() => {
     fetchOrderDetails();
@@ -78,7 +88,7 @@ export default function OrderDetailScreen() {
     setIsRefreshing(true);
     await fetchOrderDetails();
     setIsRefreshing(false);
-  }, [fetchOrderDetails]);
+  }, [fetchOrderDetails]); // fetchOrderDetails already depends on user
 
   const formatDate = (dateString: string | undefined, includeTime = false) => {
     if (!dateString) return 'N/A';
@@ -119,26 +129,46 @@ export default function OrderDetailScreen() {
     }
   };
 
-  if (isLoading || error || !order) {
+  // Show loading indicator while auth or order data is loading
+  if (isLoading || isAuthLoading) {
     return (
       <ThemedView style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
-        <NavigationHeader title={`Order #${id}`} />
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : (
-          <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>
-              {error || 'Order not found'}
-            </ThemedText>
-          </View>
-        )}
+        <NavigationHeader title={`Order #${id || 'Details'}`} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       </ThemedView>
     );
   }
+  
+  // Show login prompt if user is not logged in
+  if (!user) {
+    return (
+       <ThemedView style={styles.container}>
+          <Stack.Screen options={{ headerShown: false }} />
+          <NavigationHeader title={`Order #${id || 'Details'}`} />
+          <LoginPrompt />
+        </ThemedView>
+    );
+  }
+  
+  // Show error or "not found" message if order fetch failed or order is null
+  if (error || !order) {
+      return (
+        <ThemedView style={styles.container}>
+          <Stack.Screen options={{ headerShown: false }} />
+          <NavigationHeader title={`Order #${id}`} />
+          <View style={styles.errorContainer}>
+              <ThemedText style={styles.errorText}>
+                {error || 'Order not found'}
+              </ThemedText>
+          </View>
+        </ThemedView>
+      );
+    }
 
+  // Render order details if logged in and order is loaded
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />

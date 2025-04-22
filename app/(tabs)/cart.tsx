@@ -18,14 +18,17 @@ import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
 import type { CartItem } from '@/types/api';
-import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
+import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native'; // Removed LogIn icon
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import the reusable component
+
+// Removed inline LoginPrompt component
 
 export default function CartScreen() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth(); // Renamed isLoading to avoid conflict
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Keep this for cart data loading
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingItem, setUpdatingItem] = useState<number | null>(null);
 
@@ -95,6 +98,21 @@ export default function CartScreen() {
   );
   const totalAmount = subtotalAmount + SHIPPING_COST;
 
+  // Handle auth loading state first
+  if (isAuthLoading) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </ThemedView>
+    );
+  }
+  
+  // Show login prompt if user is not logged in
+  if (!user) {
+    return <LoginPrompt />;
+  }
+  
+  // Handle cart data loading state
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -103,6 +121,7 @@ export default function CartScreen() {
     );
   }
 
+  // Show empty cart message if logged in but cart is empty
   if (cartItems.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
@@ -444,4 +463,5 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       marginTop: 24,
       minWidth: 200,
     },
+    // Removed inline login prompt styles
   });

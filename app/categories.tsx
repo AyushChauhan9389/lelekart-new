@@ -9,7 +9,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { CategoryList } from '@/components/home/CategoryList';
 import { api } from '@/utils/api';
 import { useState, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Stack } from 'expo-router'; // Import Stack
+import { NavigationHeader } from '@/components/ui/NavigationHeader'; // Import NavigationHeader
 
 export default function CategoriesScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -36,11 +37,8 @@ export default function CategoriesScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <ThemedText type="title" style={styles.headerTitle}>
-          All Categories
-        </ThemedText>
-      </View>
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationHeader title="All Categories" />
       <ScrollView>
         <CategoryList data={categories} />
       </ScrollView>
@@ -52,21 +50,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
+  // Removed header and headerTitle styles
 });

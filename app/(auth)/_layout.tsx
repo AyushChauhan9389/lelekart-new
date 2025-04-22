@@ -1,19 +1,20 @@
 import { Stack, useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Colors from '@/constants/Colors';
-import { TouchableOpacity, BackHandler } from 'react-native';
+import { TouchableOpacity } from 'react-native'; // Removed BackHandler
 import { ChevronLeft } from 'lucide-react-native';
-import { useEffect } from 'react';
+// import { useEffect } from 'react'; // Removed useEffect
 
 export default function AuthLayout() {
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.replace('/(tabs)');
-      return true;
-    });
-
-    return () => backHandler.remove();
-  }, []);
+  // Removed useEffect for hardware back button handling
+  // useEffect(() => {
+  //   const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+  //     router.replace('/(tabs)');
+  //     return true;
+  //   });
+  //
+  //   return () => backHandler.remove();
+  // }, []);
 
   const colorScheme = useColorScheme();
   const router = useRouter(); // Add router hook
@@ -36,29 +37,23 @@ export default function AuthLayout() {
         options={{
           title: 'Login',
           headerShown: true,
-          headerBackVisible: false, // Hide default back button
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.replace('/(tabs)')}
-              style={{ marginLeft: 15, padding: 5 }}>
-              <ChevronLeft size={28} color={colors.primary} />
-            </TouchableOpacity>
-          ),
+          headerBackVisible: true, // Show default back button if applicable
+          headerLeft: undefined, // Removed custom headerLeft
           // Removed duplicate closing tag here
         }}
       />
-      <Stack.Screen
-        name="register"
+      {/* <Stack.Screen
+        name="register" // Removed as requested
         options={{
           title: 'Create Account',
         }}
-      />
-      <Stack.Screen
-        name="forgot-password"
+      /> */}
+      {/* <Stack.Screen
+        name="forgot-password" // Removed as the file doesn't exist
         options={{
           title: 'Reset Password',
         }}
-      />
+      /> */}
     </Stack>
   );
 }

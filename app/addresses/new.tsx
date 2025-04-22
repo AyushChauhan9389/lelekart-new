@@ -7,18 +7,14 @@ import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { api } from '@/utils/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
+import { ActivityIndicator } from 'react-native'; // Import ActivityIndicator
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  }
-});
+// Removed top-level styles definition
 
 export default function NewAddressScreen() {
-  return <NewAddressContent />;
-}
-
-function NewAddressContent() {
+  const { user, isLoading } = useAuth(); // Get auth state
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +23,7 @@ function NewAddressContent() {
     setIsSubmitting(true);
     try {
       await api.addresses.add(formData);
-      router.back();
+      router.back(); // Go back after successful submission
     } catch (error) {
       console.error('Error adding address:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to add address. Please try again.';
@@ -37,6 +33,29 @@ function NewAddressContent() {
     }
   };
 
+  // Show loading indicator
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, styles.centerContent]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="Add New Address" />
+        <ActivityIndicator size="large" color={colors.primary} />
+      </ThemedView>
+    );
+  }
+
+  // Show login prompt if not logged in
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="Add New Address" />
+        <LoginPrompt />
+      </ThemedView>
+    );
+  }
+
+  // Render form if logged in
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -48,3 +67,15 @@ function NewAddressContent() {
     </ThemedView>
   );
 }
+
+// Define styles within the component scope
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

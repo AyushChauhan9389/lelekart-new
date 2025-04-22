@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Alert, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText'; // Import ThemedText
 import { AddressForm } from '@/components/address/AddressForm';
 import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { api } from '@/utils/api';
 import type { Address } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 
 const styles = StyleSheet.create({
   container: {
@@ -21,21 +24,24 @@ const styles = StyleSheet.create({
 });
 
 export default function EditAddressScreen() {
-  return <EditAddressContent />;
-}
-
-function EditAddressContent() {
+  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
   const { id } = useLocalSearchParams();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [address, setAddress] = useState<Address | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // For address data loading
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // Only fetch if logged in and ID is present
+    if (!user || !id) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchAddress = async () => {
+      setIsLoading(true); // Start loading address data
       try {
-        // We'll get this from the addresses list since there's no single address endpoint
         const addresses = await api.addresses.getAll();
         const foundAddress = addresses.find(addr => addr.id === Number(id));
         if (!foundAddress) {
@@ -49,12 +55,12 @@ function EditAddressContent() {
         Alert.alert('Error', 'Failed to load address. Please try again.');
         router.back();
       } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Stop loading address data
       }
     };
 
     fetchAddress();
-  }, [id]);
+  }, [id, user]); // Add user dependency
 
   const handleSubmit = async (formData: Parameters<typeof api.addresses.update>[1]) => {
     if (!address) return;
@@ -72,7 +78,8 @@ function EditAddressContent() {
     }
   };
 
-  if (isLoading || !address) {
+  // Show loading indicator for auth or address data
+  if (isAuthLoading || (user && isLoading)) {
     return (
       <ThemedView style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -84,6 +91,31 @@ function EditAddressContent() {
     );
   }
 
+  // Show login prompt if not logged in
+  if (!user) {
+    return (
+       <ThemedView style={styles.container}>
+          <Stack.Screen options={{ headerShown: false }} />
+          <NavigationHeader title="Edit Address" />
+          <LoginPrompt />
+        </ThemedView>
+    );
+  }
+  
+  // Handle case where address couldn't be loaded after logging in
+   if (!address) {
+      return (
+        <ThemedView style={styles.container}>
+          <Stack.Screen options={{ headerShown: false }} />
+          <NavigationHeader title="Edit Address" />
+           <View style={styles.loadingContainer}>
+             <ThemedText>Address not found or failed to load.</ThemedText>
+          </View>
+        </ThemedView>
+      );
+    }
+
+  // Render form if logged in and address is loaded
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />

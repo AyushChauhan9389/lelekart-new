@@ -11,6 +11,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Package, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 
 export default function OrdersScreen() {
   const [ordersData, setOrdersData] = useState<{ orders: Order[]; total: number }>({ orders: [], total: 0 });
@@ -94,18 +95,9 @@ export default function OrdersScreen() {
     );
   }
 
+  // Show login prompt if user is not logged in
   if (!user) {
-    return (
-      <ThemedView style={styles.emptyContainer}>
-        <Package size={64} color={colors.text} style={{ opacity: colorScheme === 'dark' ? 0.4 : 0.5 }} />
-        <ThemedText type="title" style={styles.emptyText}>Login to view orders</ThemedText>
-        <Button 
-          onPress={() => router.push('/(auth)/login')}
-          style={styles.loginButton}>
-          Login
-        </Button>
-      </ThemedView>
-    );
+    return <LoginPrompt />;
   }
 
   if (error) {
@@ -249,10 +241,8 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       textAlign: 'center',
       opacity: colorScheme === 'dark' ? 0.5 : 0.7,
     },
-    loginButton: {
-      marginTop: 20,
-      minWidth: 120,
-    },
+    // Removed loginButton style as it's handled by LoginPrompt
+    // loginButton: { ... },
     retryButton: {
       marginTop: 12,
       minWidth: 120,

@@ -11,6 +11,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Heart, ChevronRight, Trash2 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 
 export default function WishlistScreen() {
   const [items, setItems] = useState<WishlistItem[]>([]);
@@ -68,20 +69,12 @@ export default function WishlistScreen() {
     );
   }
 
+  // Show login prompt if user is not logged in
   if (!user) {
-    return (
-      <ThemedView style={styles.emptyContainer}>
-        <Heart size={64} color={colors.text} style={{ opacity: colorScheme === 'dark' ? 0.4 : 0.5 }} />
-        <ThemedText type="title" style={styles.emptyText}>Login to view wishlist</ThemedText>
-        <Button 
-          onPress={() => router.push('/(auth)/login')}
-          style={styles.loginButton}>
-          Login
-        </Button>
-      </ThemedView>
-    );
+    return <LoginPrompt />;
   }
 
+  // Show empty wishlist message if logged in but wishlist is empty
   if (items.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
@@ -257,4 +250,6 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     removeButton: {
       padding: 8,
     },
+    // Removed loginButton style as it's handled by LoginPrompt
+    // loginButton: { ... },
   });

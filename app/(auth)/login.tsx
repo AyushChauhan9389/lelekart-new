@@ -122,7 +122,7 @@ export default function LoginScreen() {
           {isLoading ? 'Please wait...' : otpSent ? 'Verify OTP' : 'Send OTP'}
         </Button>
 
-        {!otpSent && (
+        {/* {!otpSent && ( // Removed Register button as requested
           <Button
             variant="ghost"
             onPress={() => router.push('/register')}
@@ -131,7 +131,7 @@ export default function LoginScreen() {
           >
             New user? Create Account
           </Button>
-        )}
+        )} */}
       </View>
     </ThemedView>
   );
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: Colors.light.background,
+    // backgroundColor is handled by ThemedView
   },
   header: {
     marginTop: 40,

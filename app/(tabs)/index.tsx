@@ -1,6 +1,6 @@
-import React, { useCallback, useState, useMemo } from 'react'; // Added useMemo
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View, Dimensions } from 'react-native';
-import { useFocusEffect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
@@ -35,7 +35,7 @@ export default function HomeScreen() {
       const [featuredData, categoriesData, productsData] = await Promise.all([
         api.home.getFeaturedProducts(),
         api.home.getCategories(),
-        api.products.getAll(1, 6), // Use api utility and limit to 6
+        api.products.getAll(1, 10), // Fetch 10 products
       ]);
 
       if (featuredData) setFeaturedProducts(featuredData);
@@ -48,11 +48,17 @@ export default function HomeScreen() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
+  // Initial data fetch only
+  useEffect(() => {
+    if (featuredProducts.length === 0 && categories.length === 0 && products.length === 0) {
       fetchHomeData();
-    }, [])
-  );
+    }
+  }, []);
+
+  // Manual refresh handler
+  const handleRefresh = useCallback(() => {
+    fetchHomeData();
+  }, []);
 
   return (
     <ThemedView style={styles.container}>
@@ -62,16 +68,21 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         // Only show RefreshControl when not initially loading
-        refreshControl={!isLoading ? <RefreshControl refreshing={false} onRefresh={fetchHomeData} /> : undefined}>
+        refreshControl={
+          <RefreshControl 
+            refreshing={isLoading} 
+            onRefresh={handleRefresh}
+          />
+        }>
         {isLoading ? (
           // Show Skeletons when loading
           <>
             <View style={styles.section}>
               <HeroCarouselSkeleton />
             </View>
-            <View style={styles.section}>
+            {/* <View style={styles.section}>
               <CategoryListSkeleton />
-            </View>
+            </View> */}
             <View style={styles.section}>
               <ProductGridSkeleton />
             </View>
@@ -111,7 +122,7 @@ export default function HomeScreen() {
                     <ThemedText>View All</ThemedText>
                   </Button>
                 </View>
-                <ProductGrid data={products.slice(0, 6)} />
+                <ProductGrid data={products} /> 
               </View>
             )}
             {/* Add a fallback case if all content is empty after loading */}

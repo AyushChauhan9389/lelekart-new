@@ -6,40 +6,10 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Colors from '@/constants/Colors';
-import { AuthProvider, useAuth } from '@/context/AuthContext'; // Import AuthProvider and useAuth
+import { AuthProvider } from '@/context/AuthContext'; // Removed useAuth import
 
-// Custom hook to manage redirection based on auth state
-function useProtectedRoute() {
-  const segments = useSegments();
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (isLoading) return; // Don't redirect until auth state is loaded
-
-    const inAuthGroup = segments[0] === '(auth)';
-    const inTabsGroup = segments[0] === '(tabs)';
-    const protectedTabs = ['cart', 'profile', 'wishlist']; // Define protected tab routes
-
-    // Check if we are in a protected tab route (ensure segment[1] exists)
-    const isProtectedRoute = (
-      // Check protected tab routes
-      (inTabsGroup && segments[1] && protectedTabs.includes(segments[1])) ||
-      // Check other protected routes
-      segments[0] === 'orders' ||
-      segments[0] === 'addresses' ||
-      segments[0] === 'settings'
-    );
-
-    if (!user && isProtectedRoute) {
-      // Redirect to login if user is not signed in and accessing a protected route
-      router.push('/login');
-    } else if (user && inAuthGroup) {
-      // Redirect away from auth screens if user is signed in
-      router.replace('/');
-    }
-  }, [user, segments, isLoading, router]);
-}
+// Removed useProtectedRoute hook as logic will move to individual screens
+// function useProtectedRoute() { ... }
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -47,7 +17,7 @@ SplashScreen.preventAutoHideAsync();
 // Main RootLayoutNav component
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  useProtectedRoute(); // Apply protected route logic
+  // Removed useProtectedRoute() call
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

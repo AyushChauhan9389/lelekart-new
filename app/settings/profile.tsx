@@ -12,6 +12,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { api } from '@/utils/api';
 import type { UserProfile } from '@/types/api';
 import { useAuth } from '@/context/AuthContext';
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
+import { ActivityIndicator } from 'react-native'; // Import ActivityIndicator
 
 export default function ProfileSettingsScreen() {
   const [profile, setProfile] = useState<UserProfile>({
@@ -23,8 +25,8 @@ export default function ProfileSettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
-  const { user } = useAuth();
+
+  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
@@ -55,6 +57,31 @@ export default function ProfileSettingsScreen() {
     }
   };
 
+  // Show loading indicator while auth state is resolving
+  if (isAuthLoading) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="Profile Settings" />
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </ThemedView>
+    );
+  }
+
+  // Show login prompt if not logged in
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="Profile Settings" />
+        <LoginPrompt />
+      </ThemedView>
+    );
+  }
+
+  // Render profile settings form if logged in
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -144,5 +171,10 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     },
     notificationButton: {
       marginTop: 16,
+    },
+    centerContent: { // Style for centering loading indicator
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

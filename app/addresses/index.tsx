@@ -10,6 +10,9 @@ import type { Address } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { MapPin, Plus, Edit2, Trash2, Star, StarOff } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
+import { ActivityIndicator } from 'react-native'; // Import ActivityIndicator
 
 function AddressesContent() {
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -162,11 +165,34 @@ function AddressesContent() {
 }
 
 export default function AddressesScreen() {
+  const { user, isLoading } = useAuth(); // Get auth state
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
 
+  // Show loading indicator
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, styles.centerContent]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="My Addresses" />
+        <ActivityIndicator size="large" color={colors.primary} />
+      </ThemedView>
+    );
+  }
+
+  // Show login prompt if not logged in
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <NavigationHeader title="My Addresses" />
+        <LoginPrompt />
+      </ThemedView>
+    );
+  }
+
+  // Render content if logged in
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -249,5 +275,10 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border, // Use theme border color
     backgroundColor: colors.background, // Use theme background color
+  },
+  centerContent: { // Style for centering loading indicator
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

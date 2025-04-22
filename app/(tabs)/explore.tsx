@@ -41,7 +41,7 @@ export default function ExploreScreen() {
     setError(null);
 
     try {
-      const response = await api.products.getAll(page);
+      const response = await api.products.getAll(page, 10); // Fetch 10 products per page
       if (response.products && response.products.length > 0) {
         setProducts((prevProducts) => {
           if (page === 1) {

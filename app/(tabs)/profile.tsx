@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable, ActivityIndicator } from 'react-native'; // Import ActivityIndicator
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Package, Heart, Settings, LogOut, ChevronRight, MapPin } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 
 interface ProfileOptionProps {
   icon: React.ElementType;
@@ -30,15 +31,25 @@ const ProfileOption: React.FC<ProfileOptionProps> = ({ icon: Icon, label, onPres
 };
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth(); // Add isLoading
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  if (!user) {
-    router.push('/login');
-    return null;
+  // Show loading indicator while auth state is resolving
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </ThemedView>
+    );
   }
 
+  // Show login prompt if user is not logged in
+  if (!user) {
+    return <LoginPrompt />;
+  }
+
+  // Render profile content if user is logged in
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.optionsContainer, { backgroundColor: colors.surface }]}>
@@ -95,5 +106,9 @@ const styles = StyleSheet.create({
   logoutButton: {
     marginTop: 'auto', // Push to bottom
     marginBottom: 16,
+  },
+  centerContent: { // Add style for centering loading indicator
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
