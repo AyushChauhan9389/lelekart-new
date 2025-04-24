@@ -122,7 +122,7 @@ export default function LoginScreen() {
           {isLoading ? 'Please wait...' : otpSent ? 'Verify OTP' : 'Send OTP'}
         </Button>
 
-        {/* {!otpSent && ( // Removed Register button as requested
+        {/* {!otpSent && ( // Comment out Register button again
           <Button
             variant="ghost"
             onPress={() => router.push('/register')}

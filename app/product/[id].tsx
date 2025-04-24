@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Image } from 'react-native'; // Added Image back
+import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Image, useWindowDimensions } from 'react-native'; // Added useWindowDimensions
 import { useLocalSearchParams, router } from 'expo-router';
+import Toast from 'react-native-toast-message'; // Import Toast
+import RenderHTML from 'react-native-render-html'; // Import RenderHTML
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/context/AuthContext';
@@ -24,6 +26,7 @@ export default function ProductScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
   const { user, isLoading: isAuthLoading } = useAuth();
+  const { width } = useWindowDimensions(); // Get window width
 
   useEffect(() => {
     const checkWishlist = async () => {
@@ -106,8 +109,20 @@ export default function ProductScreen() {
     setAddingToCart(true);
     try {
       await api.cart.addItem(product.id);
+      Toast.show({
+        type: 'success',
+        text1: 'Added to Cart',
+        text2: `${product.name} has been added to your cart.`,
+        position: 'bottom',
+      });
     } catch (error) {
       console.error('Failed to add to cart:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to add item to cart.',
+        position: 'bottom',
+      });
     } finally {
       setAddingToCart(false);
     }
@@ -117,14 +132,28 @@ export default function ProductScreen() {
     if (!product || updatingWishlist) return;
     setUpdatingWishlist(true);
     try {
+      let message = '';
       if (isInWishlist) {
         await api.wishlist.removeItem(product.id);
+        message = 'Removed from Wishlist';
       } else {
         await api.wishlist.addItem(product.id);
+        message = 'Added to Wishlist';
       }
       setIsInWishlist(!isInWishlist);
+      Toast.show({
+        type: 'success',
+        text1: message,
+        position: 'bottom',
+      });
     } catch (error) {
       console.error('Failed to update wishlist:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update wishlist.',
+        position: 'bottom',
+      });
     } finally {
       setUpdatingWishlist(false);
     }
@@ -159,13 +188,25 @@ export default function ProductScreen() {
           {product.specifications && (
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>Specifications</ThemedText>
-              <ThemedText style={styles.sectionContent}>{product.specifications}</ThemedText>
+              {/* Render HTML for specifications */}
+              <RenderHTML
+                contentWidth={width - 40} // Subtract padding
+                source={{ html: product.specifications }}
+                baseStyle={{ color: colors.text, opacity: colorScheme === 'dark' ? 0.7 : 0.8 }}
+                tagsStyles={{ p: { marginVertical: 5, lineHeight: 22 }, li: { marginBottom: 8, lineHeight: 22 } }}
+              />
             </View>
           )}
 
           <View style={styles.section}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>Description</ThemedText>
-            <ThemedText style={styles.sectionContent}>{product.description}</ThemedText>
+             {/* Render HTML for description */}
+             <RenderHTML
+                contentWidth={width - 40} // Subtract padding
+                source={{ html: product.description }}
+                baseStyle={{ color: colors.text, opacity: colorScheme === 'dark' ? 0.7 : 0.8 }}
+                tagsStyles={{ p: { marginVertical: 5, lineHeight: 22 }, li: { marginBottom: 8, lineHeight: 22 } }}
+              />
           </View>
 
           {(product.color || product.size) && (
@@ -283,6 +324,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       fontSize: 16,
       lineHeight: 24,
       opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+      // Remove fixed lineHeight if using RenderHTML
     },
     floatingButtonContainer: {
       position: 'absolute',

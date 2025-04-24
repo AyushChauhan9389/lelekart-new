@@ -4,6 +4,7 @@ import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router'; // Im
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Toast from 'react-native-toast-message'; // Import Toast
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Colors from '@/constants/Colors';
 import { AuthProvider } from '@/context/AuthContext'; // Removed useAuth import
@@ -65,6 +66,7 @@ export default function RootLayout() {
     <AuthProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <RootLayoutNav />
+        <Toast /> {/* Add Toast provider here */}
       </GestureHandlerRootView>
     </AuthProvider>
   );

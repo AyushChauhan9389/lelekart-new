@@ -42,12 +42,12 @@ export default function AuthLayout() {
           // Removed duplicate closing tag here
         }}
       />
-      {/* <Stack.Screen
-        name="register" // Removed as requested
+      <Stack.Screen // Restore register screen definition
+        name="register"
         options={{
           title: 'Create Account',
         }}
-      /> */}
+      />
       {/* <Stack.Screen
         name="forgot-password" // Removed as the file doesn't exist
         options={{
