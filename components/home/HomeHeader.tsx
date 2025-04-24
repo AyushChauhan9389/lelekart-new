@@ -1,34 +1,85 @@
-import React from 'react';
-import { StyleSheet, View, Pressable, Dimensions } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react'; // Import useState, useEffect
+import { StyleSheet, View, Pressable, Dimensions, ActivityIndicator } from 'react-native'; // Import ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell } from 'lucide-react-native';
+import { Bell, MapPin, LogIn } from 'lucide-react-native'; // Import MapPin, LogIn
 import { router } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { ThemedText } from '@/components/ThemedText';
+import { Button } from '@/components/ui/Button'; // Import Button
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { api } from '@/utils/api';
+import type { Address } from '@/types/api'; // Import Address type
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 
 export function HomeHeader() {
+  const { user } = useAuth(); // Get user state
+  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
+  const [loadingAddress, setLoadingAddress] = useState(false);
+
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const styles = React.useMemo(() => createStyles(colors), [colors]); // Use useMemo and createStyles
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  useEffect(() => {
+    const fetchAddress = async () => {
+      if (user) {
+        setLoadingAddress(true);
+        try {
+          const addresses = await api.addresses.getAll();
+          const defaultAddr = addresses.find(addr => addr.isDefault) || addresses[0];
+          setDefaultAddress(defaultAddr || null);
+        } catch (error) {
+          console.error("Failed to fetch addresses:", error);
+          setDefaultAddress(null); // Reset on error
+        } finally {
+          setLoadingAddress(false);
+        }
+      } else {
+        setDefaultAddress(null); // Clear address if user logs out
+      }
+    };
+
+    fetchAddress();
+  }, [user]);
+
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
-      <View style={[styles.container, { borderBottomColor: colors.border }]}>
-        {/* Left Section (Location) */}
+    // Keep SafeAreaView for top edge only, remove background
+    <SafeAreaView edges={['top']}>
+      {/* Add an outer View to hold the background color */}
+      <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { borderBottomColor: colors.border }]}>
+          {/* Left Section remains the same */}
         <View style={styles.leftContainer}>
-          <Pressable style={styles.locationButton} onPress={() => router.push('/addresses')}>
-            <ThemedText numberOfLines={1} style={styles.locationLabel}>
-              Deliver to
-            </ThemedText>
-            <View style={styles.locationRow}>
-              <ThemedText numberOfLines={1} style={styles.location}>
-                Mumbai, 400001
-              </ThemedText>
-            </View>
-          </Pressable>
+          {user ? (
+            loadingAddress ? (
+              <ActivityIndicator size="small" color={colors.text} />
+            ) : (
+              <Pressable style={styles.locationButton} onPress={() => router.push('/addresses')}>
+                <ThemedText numberOfLines={1} style={styles.locationLabel}>
+                  Deliver to
+                </ThemedText>
+                <View style={styles.locationRow}>
+                  <MapPin size={16} color={colors.text} style={{ marginRight: 4 }}/>
+                  {/* Updated text to show State and Pincode */}
+                  <ThemedText numberOfLines={1} style={styles.location}>
+                    {defaultAddress ? `${defaultAddress.state || 'State'}, ${defaultAddress.pincode || 'Pincode'}` : 'Select Address'}
+                  </ThemedText>
+                </View>
+              </Pressable>
+            )
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() => router.push('/(auth)/login')}
+              style={styles.loginButton}
+              leftIcon={<LogIn size={16} color={colors.primary}/>}
+            >
+              Login
+            </Button>
+          )}
         </View>
 
         {/* Center Section (Logo) */}
@@ -55,12 +106,16 @@ export function HomeHeader() {
       >
         <ThemedText style={styles.searchText}>Search products...</ThemedText>
       </Pressable>
-    </SafeAreaView>
+      </View> 
+    </SafeAreaView> 
   );
 }
 
 // Moved StyleSheet creation into a function that accepts colors
 const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
+  outerContainer: { // Style for the new outer View
+    // Background color applied inline
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -98,6 +153,9 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
   location: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  loginButton: {
+    paddingHorizontal: 12,
   },
   logoText: {
     fontSize: WINDOW_WIDTH >= 768 ? 26 : 22,

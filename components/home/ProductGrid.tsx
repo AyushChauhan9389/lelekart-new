@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Import useState, useEffect, useMemo, useCallback
 import { Dimensions, Image, Pressable, StyleSheet, View, FlatList, Platform, TouchableOpacity, ActivityIndicator } from 'react-native'; // Import TouchableOpacity, ActivityIndicator
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message'; // Import Toast
+import Toast from 'react-native-toast-message';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Heart, ShoppingCart } from 'lucide-react-native'; // Import icons
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { Heart, ShoppingCart } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/Button'; // Import Button
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
@@ -150,20 +151,7 @@ export function ProductGrid({ data }: ProductGridProps) {
                 )}
               </TouchableOpacity>
             )}
-            {/* Add to Cart Button Overlay */}
-            {user && ( // Only show if user is logged in
-              <TouchableOpacity
-                style={[styles.overlayButton, styles.cartButton]}
-                onPress={handleAddToCart}
-                disabled={addingToCart}
-              >
-                {addingToCart ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <ShoppingCart size={18} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            )}
+            {/* Add to Cart Button Overlay Removed */}
           </View>
           {/* Content Below Image */}
           <View style={styles.content}>
@@ -185,8 +173,19 @@ export function ProductGrid({ data }: ProductGridProps) {
                 </ThemedText>
               </>
             )}
-            {/* Removed extra closing parenthesis here */}
           </View>
+          {/* Add to Cart Button Below Content */}
+          {user && (
+            <Button
+              onPress={handleAddToCart}
+              disabled={addingToCart}
+              style={styles.addToCartButton}
+              size="sm"
+              leftIcon={!addingToCart ? <ShoppingCart size={16} color={colors.background} /> : undefined} // Add icon
+            >
+              {addingToCart ? 'Adding...' : 'Add to Cart'}
+            </Button>
+          )}
         </View>
         </Pressable>
       </View>
@@ -280,24 +279,24 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     borderWidth: 1,
   },
   content: {
-    padding: SPACING * 0.75,
+    padding: SPACING * 0.75, // Use SPACING
     backgroundColor: colors.card,
   },
   name: {
     fontSize: WINDOW_WIDTH < 380 ? 13 : 14,
-    marginBottom: SPACING / 2,
+    marginBottom: SPACING / 4, // Reduced bottom margin
     lineHeight: 20,
-    minHeight: 40,
+    minHeight: 40, // Keep minHeight to maintain alignment
     opacity: 0.9,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline', // Changed back to baseline for better text alignment
-    gap: SPACING / 2, // Re-added gap for spacing between price, mrp, discount
-    marginTop: SPACING / 2,
+    gap: SPACING / 2,
+    marginTop: SPACING / 4, // Reduced top margin
     flexWrap: 'wrap',
+    marginBottom: SPACING * 0.5,
   },
-  // Removed mrpDiscountContainer style
   price: {
     fontSize: WINDOW_WIDTH < 380 ? 16 : 18,
     fontWeight: '700',
@@ -319,5 +318,8 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     marginTop: 20,
     fontSize: 16,
     opacity: 0.7,
+  },
+  addToCartButton: {
+    marginTop: SPACING * 0.75, // Use SPACING
   },
 });

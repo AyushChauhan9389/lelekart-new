@@ -31,15 +31,18 @@ interface HeroCarouselProps {
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 const ITEM_WIDTH = Math.min(WINDOW_WIDTH, 1200); // Cap maximum width
 const ITEM_HEIGHT = WINDOW_WIDTH >= 768 ? 400 : WINDOW_WIDTH >= 480 ? 300 : 250; // Responsive height
+const SPACING = 12; // Define SPACING at the top level
 
 // Create Animated FlatList component
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<FeaturedHeroProduct>);
 
 export function HeroCarousel({ data }: HeroCarouselProps) {
-  const colorScheme = useColorScheme(); // Get current color scheme
-  const colors = Colors[colorScheme ?? 'light']; // Get theme colors
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  // Pass SPACING to createStyles
+  const styles = React.useMemo(() => createStyles(colors, colorScheme, SPACING), [colors, colorScheme]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const scrollX = useSharedValue(0); // Use useSharedValue
+  const scrollX = useSharedValue(0);
   const flatListRef = useRef<FlatList<FeaturedHeroProduct>>(null); // Add type to ref
 
   // Define the scroll handler using useAnimatedScrollHandler
@@ -60,49 +63,47 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
   ).current;
 
   const renderItem = ({ item }: { item: FeaturedHeroProduct }) => (
+    // Apply onPress directly to the main slide View
     <Pressable
       style={[styles.slide, { width: ITEM_WIDTH }]}
       onPress={() => {
-        if (item.productId) {
-          router.push(`/product/${item.productId}`);
-        }
-        // Optionally handle category navigation if needed:
-        // else if (item.category) { router.push(`/category/${item.category}`); }
-      }}>
-      {/* Use ImageBackground for simpler layout */}
-      <Image source={{ uri: item.url }} style={StyleSheet.absoluteFill} />
-      <View style={styles.overlay}>
-        {/* Add checks for text content before rendering */}
-        {item.title && (
-          <ThemedText type="title" style={styles.title}>
-            {item.title}
-          </ThemedText>
-        )}
-        {item.subtitle && (
-          <ThemedText style={styles.subtitle}>{item.subtitle}</ThemedText>
-        )}
-        {/* Display badge if available */}
-        {item.badgeText && (
-          <View style={[styles.badge, { backgroundColor: colors.error }]}> {/* Use theme color */}
-            <ThemedText style={styles.badgeText}>{item.badgeText}</ThemedText>
-          </View>
-        )}
-        {/* Add check for button text */}
-        {item.buttonText && (
-          <Button
+        if (item.productId) router.push(`/product/${item.productId}`);
+      }}
+    >
+      {/* Image Container */}
+      <View style={styles.imageContainer}>
+        <Image source={{ uri: item.url }} style={styles.image} />
+      </View>
+
+      {/* Footer Container for Text and Button */}
+      <View style={[styles.footerContainer, { backgroundColor: colors.card }]}>
+           {item.badgeText && (
+             <View style={[styles.badge, { backgroundColor: colors.error }]}>
+               <ThemedText style={styles.badgeText}>{item.badgeText}</ThemedText>
+             </View>
+           )}
+          {item.title && (
+            <ThemedText type="title" style={styles.title}>
+              {item.title}
+            </ThemedText>
+          )}
+          {item.subtitle && (
+            <ThemedText style={styles.subtitle}>{item.subtitle}</ThemedText>
+          )}
+          {item.buttonText && (
+            <Button
               variant="secondary"
               onPress={() => {
-                if (item.productId) {
-                  router.push(`/product/${item.productId}`);
-                }
+                if (item.productId) router.push(`/product/${item.productId}`);
               }}
               style={styles.button}
             >
-              <ThemedText style={{ color: 'white' }}>{item.buttonText}</ThemedText>
+              {item.buttonText}
             </Button>
-        )}
-      </View>
-    </Pressable>
+          )}
+        </View>
+      {/* </Pressable> Removed inner Pressable */}
+    </Pressable> // Close the main Pressable/View
   );
 
   const renderDotIndicator = () => {
@@ -153,8 +154,8 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
   };
 
   return (
-    <View>
-      <AnimatedFlatList // Use AnimatedFlatList
+    <View style={styles.carouselContainer}>
+      <AnimatedFlatList
         ref={flatListRef}
         data={data}
         renderItem={renderItem}
@@ -166,57 +167,63 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
         scrollEventThrottle={16} // Recommended for useAnimatedScrollHandler
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        contentContainerStyle={{ alignItems: 'center' }}
+        contentContainerStyle={{ alignItems: 'center' }} // Keep this for centering slides if ITEM_WIDTH < WINDOW_WIDTH
       />
       {renderDotIndicator()}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+// Update createStyles signature to accept spacing
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null, spacing: number) => StyleSheet.create({
+  carouselContainer: {
+    marginBottom: spacing * 1.5,
+  },
   slide: {
-    height: ITEM_HEIGHT,
-    justifyContent: 'flex-end',
     width: ITEM_WIDTH,
     alignSelf: 'center',
-    overflow: 'hidden',
-    borderRadius: WINDOW_WIDTH >= 768 ? 20 : 0,
+    overflow: 'hidden', // Keep hidden overflow for border radius
+    borderRadius: 4, // Boxy corners
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  overlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    padding: WINDOW_WIDTH >= 768 ? 32 : 20,
+  // Removed pressableContent style as it's no longer used
+  imageContainer: {
+    width: '100%',
+    height: ITEM_HEIGHT, // Restore fixed height
+    backgroundColor: '#f8f8f8',
+  },
+  image: {
+    width: '100%',
+    height: '100%', // Restore height
+    resizeMode: 'cover', // Change back to cover
+  },
+  footerContainer: {
+    // padding: SPACING * 1.25, // Removed duplicate
+    padding: spacing * 1.25, // Keep the one using the spacing variable
+    position: 'relative',
+    backgroundColor: colors.card, // Use card background for footer
   },
   title: {
-    fontSize: WINDOW_WIDTH >= 768 ? 36 : WINDOW_WIDTH >= 480 ? 32 : 28,
-    color: 'white',
+    fontSize: WINDOW_WIDTH >= 768 ? 24 : 20,
+    color: colors.text,
     fontWeight: 'bold',
-    marginBottom: WINDOW_WIDTH >= 768 ? 12 : 8,
-    // Add shadow effect using native shadow properties
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
-    shadowRadius: 2,
+    marginBottom: spacing * 0.5,
   },
   subtitle: {
-    fontSize: WINDOW_WIDTH >= 768 ? 18 : 16,
-    color: 'white',
-    marginBottom: WINDOW_WIDTH >= 768 ? 24 : 16,
+    fontSize: WINDOW_WIDTH >= 768 ? 16 : 14,
+    color: colors.textSecondary,
+    marginBottom: spacing,
     opacity: 0.9,
-    maxWidth: WINDOW_WIDTH >= 768 ? 600 : undefined,
-    // Add shadow effect using native shadow properties
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-     shadowRadius: 1,
+    maxWidth: '100%',
    },
    badge: {
-     // backgroundColor set inline using theme color
      paddingHorizontal: 8,
      paddingVertical: 4,
      borderRadius: 4,
-    position: 'absolute',
-    top: 10,
-    right: 10,
+     position: 'absolute',
+     top: spacing * 0.75, // Use spacing variable
+     right: spacing * 0.75,
   },
   badgeText: {
     color: 'white',
@@ -234,11 +241,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    zIndex: 1,
+    marginTop: spacing, // Use spacing variable
   },
   dot: {
     width: WINDOW_WIDTH >= 768 ? 10 : 8,

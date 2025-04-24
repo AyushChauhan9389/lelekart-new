@@ -11,12 +11,13 @@ import {
   Platform, // Import Platform
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import Toast from 'react-native-toast-message'; // Import Toast
+import Toast from 'react-native-toast-message';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Heart, ShoppingCart } from 'lucide-react-native'; // Import icons
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { Heart, ShoppingCart } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
+import { Button } from '@/components/ui/Button'; // Import Button
 import type { Product } from '@/types/api';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -182,20 +183,7 @@ export default function ExploreScreen() {
               )}
              </TouchableOpacity>
            )}
-           {/* Add to Cart Button Overlay */}
-           {user && (
-             <TouchableOpacity
-               style={[styles.overlayButton, styles.cartButton]}
-               onPress={handleAddToCart}
-               disabled={addingToCart}
-             >
-              {addingToCart ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <ShoppingCart size={18} color={colors.primary} />
-              )}
-             </TouchableOpacity>
-           )}
+           {/* Add to Cart Button Overlay Removed */}
         </View>
         {/* Content */}
         <View style={styles.content}>
@@ -216,6 +204,18 @@ export default function ExploreScreen() {
               </>
             )}
            </View>
+           {/* Add to Cart Button Below Content */}
+           {user && (
+             <Button
+               onPress={handleAddToCart}
+               disabled={addingToCart}
+               style={styles.addToCartButton}
+               size="sm"
+               leftIcon={!addingToCart ? <ShoppingCart size={16} color={colors.background} /> : undefined} // Add icon
+             >
+               {addingToCart ? 'Adding...' : 'Add to Cart'}
+             </Button>
+           )}
          </View>
       </Pressable>
     );
@@ -330,20 +330,22 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
      borderColor: colors.border,
      borderWidth: 1,
   },
+  // Removed cartButton style
   content: {
-    padding: SPACING * 0.75, // Adjust padding
+    padding: SPACING * 0.75,
   },
   name: {
     fontSize: 14,
-    marginBottom: 4,
-    minHeight: 34, // Ensure consistent height for 2 lines
+    marginBottom: 2, // Reduced margin
+    minHeight: 34,
   },
   priceContainer: {
     flexDirection: 'row',
-    alignItems: 'baseline', // Align text baseline
-    gap: SPACING / 2, // Consistent gap
-    marginTop: SPACING / 2, // Consistent margin
+    alignItems: 'baseline',
+    gap: SPACING / 2,
+    marginTop: SPACING / 4, // Reduced margin
     flexWrap: 'wrap',
+    marginBottom: SPACING * 0.5,
   },
   price: {
     fontSize: WINDOW_WIDTH < 380 ? 16 : 18, // Match ProductGrid size
@@ -373,5 +375,8 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     marginTop: 50,
     fontSize: 16,
     opacity: 0.7,
+  },
+  addToCartButton: { // Style for the button below content
+    marginTop: SPACING * 0.75,
   },
 });

@@ -37,8 +37,18 @@ export default function AuthLayout() {
         options={{
           title: 'Login',
           headerShown: true,
-          headerLeft: () => ( // Add custom back button
-            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10, padding: 5 }}>
+          headerLeft: () => ( // Updated custom back button
+            <TouchableOpacity 
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  // Navigate to a default screen if cannot go back (e.g., home tab)
+                  router.replace('/(tabs)'); 
+                }
+              }} 
+              style={{ marginLeft: 10, padding: 5 }}
+            >
               <ChevronLeft size={24} color={colors.primary} />
             </TouchableOpacity>
           ),
