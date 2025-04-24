@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'; // Import useRef
 import {
   StyleSheet,
   View,
@@ -7,14 +7,16 @@ import {
   Dimensions,
   Pressable,
   Image,
-  TouchableOpacity, // Import TouchableOpacity
-  Platform, // Import Platform
+  TouchableOpacity,
+  Platform,
+  NativeSyntheticEvent, // Import event types
+  NativeScrollEvent,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Heart, ShoppingCart } from 'lucide-react-native';
+import { Heart, ShoppingCart, ArrowUp } from 'lucide-react-native'; // Import ArrowUp
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
 import { Button } from '@/components/ui/Button'; // Import Button
@@ -34,6 +36,8 @@ export default function ExploreScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showGoTopButton, setShowGoTopButton] = useState(false); // State for button
+  const flatListRef = useRef<FlatList>(null); // Ref for FlatList
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -85,6 +89,16 @@ export default function ExploreScreen() {
       setCurrentPage(nextPage);
       fetchProducts(nextPage);
     }
+  };
+
+  // Scroll handler for Explore screen
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setShowGoTopButton(event.nativeEvent.contentOffset.y > Dimensions.get('window').height / 2);
+  };
+
+  // Go to top handler for Explore screen
+  const goToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
   // -- Render Item Component for Explore Tab --
@@ -258,8 +272,11 @@ export default function ExploreScreen() {
         numColumns={COLUMN_COUNT}
         contentContainerStyle={styles.listContentContainer}
         columnWrapperStyle={styles.columnWrapper}
+        ref={flatListRef} // Attach ref
+        onScroll={handleScroll} // Attach scroll handler
+        scrollEventThrottle={16} // Throttle scroll events
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5} // Load more when halfway through the last item
+        onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
           !isLoading && !error ? ( // Show only if not loading and no error
@@ -267,6 +284,15 @@ export default function ExploreScreen() {
           ) : null
         }
       />
+      {/* Go to Top Button */}
+      {showGoTopButton && (
+        <TouchableOpacity
+          style={[styles.goToTopButton, { backgroundColor: colors.primary }]}
+          onPress={goToTop}
+        >
+          <ArrowUp size={24} color={colors.background} />
+        </TouchableOpacity>
+      )}
     </ThemedView>
   );
 }
@@ -376,7 +402,22 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     fontSize: 16,
     opacity: 0.7,
   },
-  addToCartButton: { // Style for the button below content
+  addToCartButton: {
     marginTop: SPACING * 0.75,
+  },
+  goToTopButton: { // Style for Go to Top button (same as index.tsx)
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 });

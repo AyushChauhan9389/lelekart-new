@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, Alert, Pressable, TextInput, TouchableOpacity, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
+import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
 import type { Address, CartItem, CreateOrderRequest } from '@/types/api';
@@ -168,6 +170,7 @@ export default function CheckoutScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <NavigationHeader title="Checkout" />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.section}>
           <ThemedText type="title" style={styles.sectionTitle}>Delivery Address</ThemedText>
@@ -308,9 +311,13 @@ export default function CheckoutScreen() {
 
 const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-    },
+  container: {
+    flex: 1,
+  },
+  headerButton: {
+    marginLeft: 8,
+    padding: 8,
+  },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -318,6 +325,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     },
     scrollView: {
       flex: 1,
+      marginTop: Platform.OS === 'ios' ? 0 : 20, // Add margin for Android status bar
     },
     scrollContent: {
       padding: 16,

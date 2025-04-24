@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/context/AuthContext';
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { Button } from '@/components/ui/Button';
-import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Plus, Minus } from 'lucide-react-native'; // Added ArrowLeft, Star, Plus, Minus
+import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Zap } from 'lucide-react-native'; // Removed Plus/Minus, Added Zap
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
@@ -21,9 +21,9 @@ export default function ProductScreen() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [updatingWishlist, setUpdatingWishlist] = useState(false);
-  const [quantity, setQuantity] = useState(1); // Re-added quantity state
-  const [selectedSize, setSelectedSize] = useState<string | null>(null); // Added size state
-  const [selectedColor, setSelectedColor] = useState<string | null>(null); // Added color state
+  // Removed quantity state
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -114,7 +114,7 @@ export default function ProductScreen() {
     if (!product || addingToCart) return;
     setAddingToCart(true);
     try {
-      await api.cart.addItem(product.id, quantity); // Pass quantity to API
+      await api.cart.addItem(product.id, 1); // Always add quantity 1
       Toast.show({
         type: 'success',
         text1: 'Added to Cart',
@@ -131,6 +131,31 @@ export default function ProductScreen() {
       });
     } finally {
       setAddingToCart(false);
+    }
+  };
+
+  // Handler for Buy Now button
+  const handleBuyNow = async () => {
+    if (!product) return; // Ensure product is loaded
+    if (!user) {
+      router.push('/(auth)/login'); // Redirect if not logged in
+      return;
+    }
+
+    try {
+      // First add to cart
+      await api.cart.addItem(product.id, 1);
+      
+      // Then navigate to checkout
+      router.push('/checkout');
+    } catch (error) {
+      console.error('Failed to add item to cart:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to add item to cart.',
+        position: 'bottom',
+      });
     }
   };
 
@@ -328,44 +353,38 @@ export default function ProductScreen() {
       <View style={styles.bottomButtonContainer}>
         {user ? (
           <View style={styles.loggedInBottomRow}>
-            {/* Quantity Selector */}
-            <View style={styles.bottomQuantitySelector}>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={quantity <= 1}
-              >
-                <Minus size={18} color={quantity <= 1 ? colors.textSecondary : colors.text} />
-              </TouchableOpacity>
-              <ThemedText style={styles.quantityText}>{quantity}</ThemedText>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() => setQuantity(quantity + 1)}
-              >
-                <Plus size={18} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-            {/* Add to Cart Button */}
-            <View style={styles.addToCartButtonWrapper}>
+            {/* Quantity Selector Removed */}
+
+            {/* Action Buttons */}
+            <View style={styles.buttonWrapper}>
               <Button
                 onPress={handleAddToCart}
-                style={styles.addToCartButton}
+                style={styles.cartButton}
+                variant="outline"
                 disabled={addingToCart}
+                textStyle={{ color: colors.text }}
+                leftIcon={<ShoppingCart size={20} color={colors.text} />}
               >
-                {/* Further Simplified Button Content */}
-                <View style={styles.addToCartButtonContent}>
-                  <Text style={styles.addToCartButtonText}>Add to Cart</Text>
-                </View>
+                Cart
+              </Button>
+            </View>
+            <View style={styles.buttonWrapper}>
+              <Button
+                onPress={handleBuyNow}
+                style={styles.buyButton}
+                leftIcon={<Zap size={20} color={colors.background} />}
+              >
+                Buy Now
               </Button>
             </View>
           </View>
         ) : ( // Correct structure for logged-out state
           <Button
             onPress={() => router.push('/(auth)/login')}
-            style={styles.addToCartButton} // Use same style for consistency
-            leftIcon={<LogIn size={20} color={colors.background} />} // Use leftIcon prop
+            style={styles.buyButton} // Use buyButton style for consistency
+            leftIcon={<LogIn size={20} color={colors.background} />}
           >
-            Login to Add {/* Direct text content, Button component should center it */}
+            Login to Add
           </Button>
         )}
       </View>
@@ -477,26 +496,9 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
      mrp: { // Strikethrough MRP
        fontSize: 16,
        textDecorationLine: 'line-through',
-       color: colors.textSecondary,
-       // No longer needed marginLeft as gap handles spacing
-     },
-    // Re-adding quantity styles for bottom placement
-    quantityButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.border, // Button background
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    quantityText: {
-      fontSize: 16,
-      fontWeight: '600',
-      minWidth: 30, // Ensure some space for the number
-      textAlign: 'center',
-      color: colors.text,
-      marginHorizontal: 8, // Space around the number
-    },
+     color: colors.textSecondary,
+   },
+  // Removed quantity styles (quantityButton, quantityText, bottomQuantitySelector)
      // Common Section Styles
     section: {
       marginBottom: 20,
@@ -568,39 +570,29 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
         },
       }),
     },
-    loggedInBottomRow: { // Container for quantity selector and button
+    loggedInBottomRow: { // Container for buttons
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 12, // Keep gap between buttons
     },
-    bottomQuantitySelector: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.card,
-      borderRadius: 20,
-      padding: 6,
+    // Removed bottomQuantitySelector style
+    buttonWrapper: {
+      flex: 1, // Make buttons share space
     },
-    addToCartButtonWrapper: {
-      flex: 1, // Allow button to take remaining space
+    cartButton: {
+      borderRadius: 30,
+      height: 50,
+      paddingHorizontal: 10,
+      borderWidth: 1,
+      borderColor: colors.text,
+      backgroundColor: colors.background,
     },
-    addToCartButton: {
-       backgroundColor: colors.text,
-       borderRadius: 30, // Highly rounded corners
-       height: 60, // Fixed height
-       paddingHorizontal: 10, // Reduce padding to let content spread
+    buyButton: {
+      borderRadius: 30,
+      height: 50,
+      paddingHorizontal: 10,
+      backgroundColor: colors.text,
     },
-     addToCartButtonContent: {
-       // Removed flexDirection: 'row' as it's just text now
-       alignItems: 'center', // Center vertically
-       justifyContent: 'center', // Center horizontally
-       width: '100%',
-       height: '100%', // Ensure View takes full button height for centering
-     },
-     addToCartButtonText: { // Text style remains simple
-       color: colors.background,
-       fontSize: 16,
-       fontWeight: '700',
-     },
      // Removed unused styles: buttonCartIcon, buttonSeparatorText, buttonPriceText, buttonMrpTextInButton
   });
 }; // Corrected closing brace

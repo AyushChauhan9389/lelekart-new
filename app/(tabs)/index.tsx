@@ -1,6 +1,7 @@
-import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View, Dimensions } from 'react-native';
+import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react'; // Import useRef
+import { RefreshControl, ScrollView, StyleSheet, View, Dimensions, TouchableOpacity, NativeSyntheticEvent, NativeScrollEvent } from 'react-native'; // Import TouchableOpacity, event types
 import { router } from 'expo-router';
+import { ArrowUp } from 'lucide-react-native'; // Import icon
 import { Button } from '@/components/ui/Button';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
@@ -23,6 +24,8 @@ export default function HomeScreen() {
   const [featuredProducts, setFeaturedProducts] = useState<FeaturedHeroProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [showGoTopButton, setShowGoTopButton] = useState(false); // State for button visibility
+  const scrollViewRef = useRef<ScrollView>(null); // Ref for ScrollView
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -58,13 +61,27 @@ export default function HomeScreen() {
   // Manual refresh handler
   const handleRefresh = useCallback(() => {
     fetchHomeData();
-  }, []);
+  }, []); // Empty dependency array for handleRefresh, fetchHomeData is stable
+
+  // Scroll handler to show/hide button
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Show button if scrolled down more than, say, half the screen height
+    setShowGoTopButton(event.nativeEvent.contentOffset.y > Dimensions.get('window').height / 2);
+  };
+
+  // Function to scroll to top
+  const goToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   return (
     <ThemedView style={styles.container}>
       <HomeHeader />
 
       <ScrollView
+        ref={scrollViewRef} // Attach ref
+        onScroll={handleScroll} // Attach scroll handler
+        scrollEventThrottle={16} // Throttle scroll events for performance
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         // Only show RefreshControl when not initially loading
@@ -134,6 +151,16 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Go to Top Button */}
+      {showGoTopButton && (
+        <TouchableOpacity
+          style={[styles.goToTopButton, { backgroundColor: colors.primary }]}
+          onPress={goToTop}
+        >
+          <ArrowUp size={24} color={colors.background} />
+        </TouchableOpacity>
+      )}
     </ThemedView>
   );
 }
@@ -178,5 +205,20 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       alignItems: 'center',
       justifyContent: 'center',
       padding: SPACING * 2,
+    },
+    goToTopButton: { // Style for Go to Top button
+      position: 'absolute',
+      bottom: 30,
+      right: 20,
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 5, // Android shadow
+      shadowColor: '#000', // iOS shadow
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
     },
   });
