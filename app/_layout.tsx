@@ -27,12 +27,12 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="settings/profile" />
         <Stack.Screen name="settings/notifications" />
-        <Stack.Screen
-          name="product/[id]"
-          options={{
-            headerShown: true,
-            headerTitle: '',
-            headerTransparent: true,
+         <Stack.Screen
+           name="product/[id]"
+           options={{
+             headerShown: false, // Hide the default header
+             headerTitle: '',
+             // headerTransparent: true, // No longer needed if header is hidden
             headerTintColor: Colors[colorScheme ?? 'light'].primary,
           }}
         />

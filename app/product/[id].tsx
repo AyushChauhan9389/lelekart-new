@@ -135,25 +135,51 @@ export default function ProductScreen() {
   };
 
   const handleWishlistToggle = async () => {
-    if (!product || updatingWishlist) return;
+    console.log('[Wishlist] Toggle triggered. Current state:', {
+      productId: product?.id,
+      updatingWishlist,
+      isInWishlist,
+      user: !!user, // Check if user object exists
+    });
+
+    if (!user) {
+      console.log('[Wishlist] No user logged in. Redirecting to login.');
+      router.push('/(auth)/login'); // Redirect if not logged in
+      return;
+    }
+
+    if (!product || updatingWishlist) {
+      console.log('[Wishlist] Aborting: No product or already updating.');
+      return;
+    }
+
     setUpdatingWishlist(true);
+    console.log('[Wishlist] setUpdatingWishlist(true)');
+
     try {
       let message = '';
+      let response; // Variable to hold API response
       if (isInWishlist) {
-        await api.wishlist.removeItem(product.id);
+        console.log('[Wishlist] Attempting to remove item:', product.id);
+        response = await api.wishlist.removeItem(product.id);
+        console.log('[Wishlist] removeItem response:', response); // Log response
         message = 'Removed from Wishlist';
       } else {
-        await api.wishlist.addItem(product.id);
+        console.log('[Wishlist] Attempting to add item:', product.id);
+        response = await api.wishlist.addItem(product.id);
+        console.log('[Wishlist] addItem response:', response); // Log response
         message = 'Added to Wishlist';
       }
       setIsInWishlist(!isInWishlist);
+      console.log('[Wishlist] setIsInWishlist ->', !isInWishlist);
       Toast.show({
         type: 'success',
         text1: message,
         position: 'bottom',
       });
+      console.log('[Wishlist] Toast shown:', message);
     } catch (error) {
-      console.error('Failed to update wishlist:', error);
+      console.error('[Wishlist] Failed to update wishlist:', error); // Log the full error
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -162,6 +188,7 @@ export default function ProductScreen() {
       });
     } finally {
       setUpdatingWishlist(false);
+      console.log('[Wishlist] setUpdatingWishlist(false)');
     }
   };
 
