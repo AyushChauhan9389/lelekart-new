@@ -130,25 +130,15 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
   },
   card: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 4, // Sharper corners
     padding: SPACING,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.card,
     minHeight: ITEM_WIDTH,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1, // Use 1 for a slightly more visible border
     borderColor: colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: colorScheme === 'dark' ? '#000' : '#666',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    // Removed Platform.select for shadow/elevation
   },
   image: {
     width: ITEM_WIDTH * 0.65,

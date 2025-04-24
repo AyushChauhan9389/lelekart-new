@@ -37,9 +37,11 @@ export default function AuthLayout() {
         options={{
           title: 'Login',
           headerShown: true,
-          headerBackVisible: true, // Show default back button if applicable
-          headerLeft: undefined, // Removed custom headerLeft
-          // Removed duplicate closing tag here
+          headerLeft: () => ( // Add custom back button
+            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10, padding: 5 }}>
+              <ChevronLeft size={24} color={colors.primary} />
+            </TouchableOpacity>
+          ),
         }}
       />
       <Stack.Screen // Restore register screen definition

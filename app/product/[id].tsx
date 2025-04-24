@@ -240,6 +240,7 @@ export default function ProductScreen() {
            </View>
 
            {/* Price Row */}
+           {/* Removed console log from here */}
            <View style={styles.priceRow}>
              <ThemedText type="subtitle" style={styles.price}>
                ₹{product.price}
@@ -380,7 +381,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     },
     container: {
       flex: 1,
-      backgroundColor: colors.card, // Use card color for the main scroll background
+      backgroundColor: colors.background, // Match details background for seamless scrolling area
     },
     centeredContainer: {
       flex: 1,

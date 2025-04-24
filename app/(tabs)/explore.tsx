@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,10 +7,15 @@ import {
   Dimensions,
   Pressable,
   Image,
+  TouchableOpacity, // Import TouchableOpacity
+  Platform, // Import Platform
 } from 'react-native';
 import { Stack, router } from 'expo-router';
+import Toast from 'react-native-toast-message'; // Import Toast
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { Heart, ShoppingCart } from 'lucide-react-native'; // Import icons
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { api } from '@/utils/api';
 import type { Product } from '@/types/api';
 import Colors from '@/constants/Colors';
@@ -31,6 +36,9 @@ export default function ExploreScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  // Generate styles dynamically based on colors
+  const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
+  const { user } = useAuth(); // Get user
 
   const fetchProducts = useCallback(async (page: number, initialLoad = false) => {
     if (initialLoad) {
@@ -78,29 +86,146 @@ export default function ExploreScreen() {
     }
   };
 
-  const renderProductItem = ({ item }: { item: Product }) => {
+  // -- Render Item Component for Explore Tab --
+  const ProductExploreItem = ({ item, styles, colors }: { item: Product, styles: any, colors: any }) => {
+    const [isInWishlist, setIsInWishlist] = useState(false);
+    const [updatingWishlist, setUpdatingWishlist] = useState(false);
+    const [addingToCart, setAddingToCart] = useState(false);
+
+    // Check wishlist status
+    useEffect(() => {
+      let isMounted = true;
+      const checkStatus = async () => {
+        if (user && item) {
+          setUpdatingWishlist(true);
+          try {
+            const { inWishlist } = await api.wishlist.checkItem(item.id);
+            if (isMounted) setIsInWishlist(inWishlist);
+          } catch (error) {
+             if (isMounted && !(error instanceof Error && error.message.includes('404'))) {
+                console.error(`Explore: Failed wishlist check for item ${item.id}:`, error);
+             }
+          } finally {
+             if (isMounted) setUpdatingWishlist(false);
+          }
+        } else {
+           if (isMounted) setIsInWishlist(false);
+        }
+      };
+      checkStatus();
+      return () => { isMounted = false; };
+    }, [user, item]);
+
+    const handleWishlistToggle = async () => {
+      if (!user) { router.push('/(auth)/login'); return; }
+      if (updatingWishlist || !item) return;
+      setUpdatingWishlist(true);
+      try {
+        let message = '';
+        if (isInWishlist) {
+          await api.wishlist.removeItem(item.id);
+          message = 'Removed from Wishlist';
+        } else {
+          await api.wishlist.addItem(item.id);
+          message = 'Added to Wishlist';
+        }
+        setIsInWishlist(!isInWishlist);
+        Toast.show({ type: 'success', text1: message, position: 'bottom' });
+      } catch (error) {
+        console.error('Explore: Failed wishlist update:', error);
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update wishlist.', position: 'bottom' });
+      } finally {
+        setUpdatingWishlist(false);
+      }
+    };
+
+    const handleAddToCart = async () => {
+      if (!user) { router.push('/(auth)/login'); return; }
+      if (addingToCart || !item) return;
+      setAddingToCart(true);
+      try {
+        await api.cart.addItem(item.id, 1); // Add quantity 1
+        Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${item.name} added.`, position: 'bottom' });
+      } catch (error) {
+        console.error('Explore: Failed add to cart:', error);
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to add item to cart.', position: 'bottom' });
+      } finally {
+        setAddingToCart(false);
+      }
+    };
+
     const imageSource = { uri: item.image_url || 'https://lelekart.in/images/electronics.svg' };
+    const showMrp = item.mrp !== null && item.mrp > item.price;
+
     return (
       <Pressable
         style={[styles.item, { backgroundColor: colors.card }]}
         onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id.toString() } })}>
-        <Image source={imageSource} style={styles.image} />
+        {/* Image Container */}
+        <View style={styles.imageContainer}>
+          <Image source={imageSource} style={styles.image} />
+           {/* Wishlist Button Overlay */}
+           {user && (
+             <TouchableOpacity
+               style={[styles.overlayButton, styles.wishlistButton]}
+               onPress={handleWishlistToggle}
+               disabled={updatingWishlist}
+             >
+              {updatingWishlist ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <Heart
+                  size={18}
+                  color={isInWishlist ? colors.error : colors.textSecondary}
+                  fill={isInWishlist ? colors.error : 'none'}
+                />
+              )}
+             </TouchableOpacity>
+           )}
+           {/* Add to Cart Button Overlay */}
+           {user && (
+             <TouchableOpacity
+               style={[styles.overlayButton, styles.cartButton]}
+               onPress={handleAddToCart}
+               disabled={addingToCart}
+             >
+              {addingToCart ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <ShoppingCart size={18} color={colors.primary} />
+              )}
+             </TouchableOpacity>
+           )}
+        </View>
+        {/* Content */}
         <View style={styles.content}>
-          <ThemedText numberOfLines={2} style={styles.name}>
+           <ThemedText numberOfLines={2} style={styles.name}>
             {item.name}
           </ThemedText>
           <View style={styles.priceContainer}>
             <ThemedText type="subtitle" style={styles.price}>
               ₹{item.price}
             </ThemedText>
-            {item.mrp > item.price && (
-              <ThemedText style={styles.mrp}>₹{item.mrp}</ThemedText>
+            {/* Use the refined condition and add discount */}
+            {showMrp && (
+              <>
+                <ThemedText style={styles.mrp}>₹{item.mrp.toString()}</ThemedText>
+                <ThemedText style={styles.discount}>
+                  {Math.round(((item.mrp - item.price) / item.mrp) * 100)}% off
+                </ThemedText>
+              </>
             )}
-          </View>
-        </View>
+           </View>
+         </View>
       </Pressable>
     );
   };
+   // -- End Render Item Component --
+
+  // Memoized callback for renderItem
+  const renderProductItemCallback = useCallback(({ item }: { item: Product }) => (
+    <ProductExploreItem item={item} styles={styles} colors={colors} />
+  ), [styles, colors]); // Depend on styles and colors
 
   const renderFooter = () => {
     if (!isLoadingMore) return null;
@@ -128,7 +253,7 @@ export default function ExploreScreen() {
       <Stack.Screen options={{ title: 'Explore' }} />
       <FlatList
         data={products}
-        renderItem={renderProductItem}
+        renderItem={renderProductItemCallback} // Use the callback
         keyExtractor={(item) => item.id.toString()}
         numColumns={COLUMN_COUNT}
         contentContainerStyle={styles.listContentContainer}
@@ -146,7 +271,8 @@ export default function ExploreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Moved StyleSheet creation into a function
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -164,22 +290,48 @@ const styles = StyleSheet.create({
   },
   item: {
     width: ITEM_WIDTH,
-    borderRadius: 8,
+    borderRadius: 4, // Sharper corners
     overflow: 'hidden',
-    marginHorizontal: SPACING / 2, // Add horizontal margin for spacing
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    marginHorizontal: SPACING / 2,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
+   imageContainer: { // Added container
+     position: 'relative',
+   },
   image: {
     width: '100%',
     aspectRatio: 1,
-    resizeMode: 'cover',
+    resizeMode: 'contain',
+    backgroundColor: '#f8f8f8',
+  },
+   overlayButton: { // Added overlay button styles
+     position: 'absolute',
+     width: 32,
+     height: 32,
+     borderRadius: 16,
+     backgroundColor: 'rgba(255, 255, 255, 0.85)',
+     justifyContent: 'center',
+     alignItems: 'center',
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 1 },
+     shadowOpacity: 0.15,
+     shadowRadius: 2,
+     elevation: 3,
+   },
+   wishlistButton: { // Added wishlist button position
+     top: 6,
+     right: 6,
+   },
+   cartButton: { // Added cart button position
+     bottom: 6,
+     right: 6,
+     backgroundColor: colors.background,
+     borderColor: colors.border,
+     borderWidth: 1,
   },
   content: {
-    padding: 10,
+    padding: SPACING * 0.75, // Adjust padding
   },
   name: {
     fontSize: 14,
@@ -188,18 +340,26 @@ const styles = StyleSheet.create({
   },
   priceContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 'auto', // Push price to bottom
+    alignItems: 'baseline', // Align text baseline
+    gap: SPACING / 2, // Consistent gap
+    marginTop: SPACING / 2, // Consistent margin
+    flexWrap: 'wrap',
   },
   price: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: WINDOW_WIDTH < 380 ? 16 : 18, // Match ProductGrid size
+    fontWeight: '700', // Match ProductGrid weight
+    color: colors.primary, // Match ProductGrid color
   },
   mrp: {
-    fontSize: 12,
+    fontSize: WINDOW_WIDTH < 380 ? 12 : 13,
     textDecorationLine: 'line-through',
-    opacity: 0.6,
+    opacity: 0.5,
+    color: colors.textSecondary,
+  },
+  discount: {
+    fontSize: WINDOW_WIDTH < 380 ? 11 : 12,
+    color: colors.success,
+    fontWeight: '600',
   },
   footerLoader: {
     marginVertical: 20,
