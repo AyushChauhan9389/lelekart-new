@@ -389,7 +389,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       backgroundColor: colors.background,
     },
     scrollContentContainer: {
-      paddingBottom: 120, // Increased padding for bottom button
+      paddingBottom: 90, // Adjust padding to allow space for floating bar without being excessive
     },
     // Image Section
     imageContainer: {
@@ -399,7 +399,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     },
     overlayButton: {
       position: 'absolute',
-      top: Platform.OS === 'ios' ? 50 : 20, // Adjust top position based on platform (status bar)
+      top: Platform.OS === 'ios' ? 60 : 30, // Increased top margin to avoid status bar overlap
       width: 40,
       height: 40,
       borderRadius: 20,
@@ -554,6 +554,18 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       backgroundColor: colors.background, // Match details background
        borderTopWidth: 1,
        borderTopColor: colors.border,
+       // Add shadow for better separation, similar to original floating style
+       ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 5,
+        },
+      }),
     },
     loggedInBottomRow: { // Container for quantity selector and button
       flexDirection: 'row',
