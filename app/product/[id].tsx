@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, Image, useWindowDimensions } from 'react-native'; // Added useWindowDimensions
+import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text } from 'react-native'; // Added TouchableOpacity, Text
 import { useLocalSearchParams, router } from 'expo-router';
-import Toast from 'react-native-toast-message'; // Import Toast
-import RenderHTML from 'react-native-render-html'; // Import RenderHTML
+import Toast from 'react-native-toast-message';
+import RenderHTML from 'react-native-render-html';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/context/AuthContext';
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { Button } from '@/components/ui/Button';
-import { ShoppingCart, LogIn, Heart } from 'lucide-react-native';
+import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Plus, Minus } from 'lucide-react-native'; // Added ArrowLeft, Star, Plus, Minus
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
@@ -21,6 +21,9 @@ export default function ProductScreen() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [updatingWishlist, setUpdatingWishlist] = useState(false);
+  const [quantity, setQuantity] = useState(1); // Re-added quantity state
+  const [selectedSize, setSelectedSize] = useState<string | null>(null); // Added size state
+  const [selectedColor, setSelectedColor] = useState<string | null>(null); // Added color state
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -103,12 +106,15 @@ export default function ProductScreen() {
 
   const mainImage = product.imageUrl || product.image_url || productImages[0] || '';
   const validProductImages = productImages.filter(img => img && typeof img === 'string');
+  // Ensure mainImage is not duplicated in the carousel list
+  const carouselImages = [mainImage, ...validProductImages.filter(img => img !== mainImage)];
+
 
   const handleAddToCart = async () => {
     if (!product || addingToCart) return;
     setAddingToCart(true);
     try {
-      await api.cart.addItem(product.id);
+      await api.cart.addItem(product.id, quantity); // Pass quantity to API
       Toast.show({
         type: 'success',
         text1: 'Added to Cart',
@@ -164,99 +170,174 @@ export default function ProductScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContentContainer}
+        showsVerticalScrollIndicator={false}
       >
-        <ImageCarousel images={[mainImage, ...validProductImages]} />
-        <View style={styles.content}>
-          <ThemedText type="title" style={styles.name}>
-            {product.name}
-          </ThemedText>
+        {/* Image Carousel with Overlay Buttons */}
+        <View style={styles.imageContainer}>
+          <ImageCarousel images={carouselImages} /> {/* Use deduplicated images */}
+          <TouchableOpacity
+            style={[styles.overlayButton, styles.backButton]}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          {user && (
+             <TouchableOpacity
+               style={[styles.overlayButton, styles.wishlistButtonOverlay]}
+               onPress={handleWishlistToggle}
+               disabled={updatingWishlist}
+             >
+               <Heart
+                 size={24}
+                 color={isInWishlist ? colors.error : colors.text} // Use error color for filled heart
+                 fill={isInWishlist ? colors.error : 'none'}
+                 strokeWidth={2}
+               />
+             </TouchableOpacity>
+           )}
+        </View>
 
-          <View style={styles.priceContainer}>
-            <ThemedText type="title" style={styles.price}>
-              ₹{product.price}
-            </ThemedText>
-            {product.mrp > product.price && (
-              <View style={styles.discountContainer}>
-                <ThemedText style={styles.mrp}>₹{product.mrp}</ThemedText>
-                <ThemedText style={[styles.discount, { color: colors.success }]}>
-                  {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% OFF
-                </ThemedText>
+        {/* Product Details Section */}
+        <View style={styles.detailsContainer}>
+           {/* Name and Reviews Row */}
+           <View style={styles.nameReviewRow}>
+              <ThemedText type="title" style={styles.name}>
+                 {product.name}
+              </ThemedText>
+              <View style={styles.reviewContainer}>
+                 <Star size={16} color={colors.warning} fill={colors.warning} />
+                 <ThemedText style={styles.reviewText}>
+                   {product.rating ?? 5.0} ({product.reviewCount ?? '7k+'} reviews) {/* Placeholder data */}
+                 </ThemedText>
               </View>
+           </View>
+
+           {/* Price Row */}
+           <View style={styles.priceRow}>
+             <ThemedText type="subtitle" style={styles.price}>
+               ₹{product.price}
+             </ThemedText>
+             {product.mrp > product.price && (
+                <ThemedText style={styles.mrp}>₹{product.mrp}</ThemedText>
+              )}
+           </View>
+
+           {/* Description */}
+           <View style={styles.section}>
+              {/* Use simple text for now, add "Read More" later if needed */}
+              <ThemedText style={styles.descriptionText} numberOfLines={3}>
+                 {/* Basic cleanup for potential HTML */}
+                 {product.description.replace(/<[^>]*>/g, '')}
+              </ThemedText>
+              {/* TODO: Add "Read More..." functionality */}
+           </View>
+
+           {/* Size Selector */}
+           {/* TODO: Replace with actual sizes from product data */}
+           {product.availableSizes && product.availableSizes.length > 0 && (
+             <View style={styles.section}>
+               <ThemedText type="subtitle" style={styles.sectionTitle}>Choose Size</ThemedText>
+               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
+                 {product.availableSizes.map((size: string) => ( // Added type: string
+                   <TouchableOpacity
+                     key={size}
+                     style={[
+                       styles.selectorButton,
+                       selectedSize === size ? styles.selectorButtonSelected : {},
+                       { borderColor: colors.border, backgroundColor: selectedSize === size ? colors.text : colors.background }
+                     ]}
+                     onPress={() => setSelectedSize(size)}
+                   >
+                     <ThemedText style={[
+                       styles.selectorButtonText,
+                       selectedSize === size ? styles.selectorButtonTextSelected : {},
+                       { color: selectedSize === size ? colors.background : colors.text }
+                     ]}>{size}</ThemedText>
+                   </TouchableOpacity>
+                 ))}
+               </ScrollView>
+             </View>
+           )}
+
+           {/* Color Selector */}
+           {/* TODO: Replace with actual colors from product data */}
+           {product.availableColors && product.availableColors.length > 0 && (
+             <View style={styles.section}>
+               <ThemedText type="subtitle" style={styles.sectionTitle}>Color</ThemedText>
+               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
+                 {product.availableColors.map((color: string) => ( // Added type: string
+                   <TouchableOpacity
+                     key={color}
+                     style={[
+                       styles.colorSelectorButton,
+                       selectedColor === color ? styles.colorSelectorButtonSelected : {},
+                       { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : colors.border } // Use actual color
+                     ]}
+                     onPress={() => setSelectedColor(color)}
+                   />
+                 ))}
+               </ScrollView>
+             </View>
             )}
-          </View>
 
-          {product.specifications && (
-            <View style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Specifications</ThemedText>
-              {/* Render HTML for specifications */}
-              <RenderHTML
-                contentWidth={width - 40} // Subtract padding
-                source={{ html: product.specifications }}
-                baseStyle={{ color: colors.text, opacity: colorScheme === 'dark' ? 0.7 : 0.8 }}
-                tagsStyles={{ p: { marginVertical: 5, lineHeight: 22 }, li: { marginBottom: 8, lineHeight: 22 } }}
-              />
-            </View>
-          )}
+            {/* Render specifications if available */}
+            {product.specifications && (
+              <View style={styles.section}>
+                <ThemedText type="subtitle" style={styles.sectionTitle}>Specifications</ThemedText>
+                <RenderHTML
+                  contentWidth={width - 40}
+                  source={{ html: product.specifications }}
+                  baseStyle={{ color: colors.text, opacity: colorScheme === 'dark' ? 0.7 : 0.8 }}
+                  tagsStyles={{ p: { marginVertical: 5, lineHeight: 22 }, li: { marginBottom: 8, lineHeight: 22 } }}
+                />
+              </View>
+             )}
 
-          <View style={styles.section}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Description</ThemedText>
-             {/* Render HTML for description */}
-             <RenderHTML
-                contentWidth={width - 40} // Subtract padding
-                source={{ html: product.description }}
-                baseStyle={{ color: colors.text, opacity: colorScheme === 'dark' ? 0.7 : 0.8 }}
-                tagsStyles={{ p: { marginVertical: 5, lineHeight: 22 }, li: { marginBottom: 8, lineHeight: 22 } }}
-              />
-          </View>
-
-          {(product.color || product.size) && (
-            <View style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Product Details</ThemedText>
-              {product.color && (
-                <ThemedText style={styles.sectionContent}>Color: {product.color}</ThemedText>
-              )}
-              {product.size && (
-                <ThemedText style={styles.sectionContent}>Size: {product.size}</ThemedText>
-              )}
-            </View>
-          )}
         </View>
       </ScrollView>
 
-      <View style={[styles.floatingButtonContainer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+      {/* Bottom Add to Cart Button */}
+      <View style={styles.bottomButtonContainer}>
         {user ? (
-          <View style={styles.buttonGroup}>
-            <Button
-              onPress={handleWishlistToggle}
-              variant="outline"
-              style={StyleSheet.flatten([styles.wishlistButton, { borderColor: colors.border }])} // Flatten styles
-              disabled={updatingWishlist}
-            >
-              <Heart
-                size={24}
-                color={isInWishlist ? colors.primary : colors.textSecondary}
-                fill={isInWishlist ? colors.primary : 'none'}
-                strokeWidth={2}
-              />
-            </Button>
-            <View style={styles.addToCartWrapper}>
+          <View style={styles.loggedInBottomRow}>
+            {/* Quantity Selector */}
+            <View style={styles.bottomQuantitySelector}>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+              >
+                <Minus size={18} color={quantity <= 1 ? colors.textSecondary : colors.text} />
+              </TouchableOpacity>
+              <ThemedText style={styles.quantityText}>{quantity}</ThemedText>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() => setQuantity(quantity + 1)}
+              >
+                <Plus size={18} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            {/* Add to Cart Button */}
+            <View style={styles.addToCartButtonWrapper}>
               <Button
                 onPress={handleAddToCart}
+                style={styles.addToCartButton}
                 disabled={addingToCart}
-                leftIcon={<ShoppingCart size={20} color={colors.background} />}
               >
-                {addingToCart ? 'Adding...' : 'Add to Cart'}
+                {/* Further Simplified Button Content */}
+                <View style={styles.addToCartButtonContent}>
+                  <Text style={styles.addToCartButtonText}>Add to Cart</Text>
+                </View>
               </Button>
             </View>
           </View>
-        ) : (
+        ) : ( // Correct structure for logged-out state
           <Button
             onPress={() => router.push('/(auth)/login')}
-            fullWidth
-            variant="secondary"
-            leftIcon={<LogIn size={20} color={colors.background} />}
+            style={styles.addToCartButton} // Use same style for consistency
+            leftIcon={<LogIn size={20} color={colors.background} />} // Use leftIcon prop
           >
-            Login to Add to Cart
+            Login to Add {/* Direct text content, Button component should center it */}
           </Button>
         )}
       </View>
@@ -264,104 +345,222 @@ export default function ProductScreen() {
   );
 }
 
-const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
-  StyleSheet.create({
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) => {
+  const isDark = colorScheme === 'dark';
+  return StyleSheet.create({
     safeArea: {
       flex: 1,
     },
     container: {
       flex: 1,
+      backgroundColor: colors.card, // Use card color for the main scroll background
     },
-    centeredContainer: { // Added for loading/error states
+    centeredContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: colors.background,
     },
     scrollContentContainer: {
-      paddingBottom: 100,
+      paddingBottom: 120, // Increased padding for bottom button
     },
-    content: {
+    // Image Section
+    imageContainer: {
+      // ImageCarousel likely handles its own height/aspect ratio
+      position: 'relative', // Needed for absolute positioning of buttons
+      backgroundColor: colors.border, // Placeholder background for image area
+    },
+    overlayButton: {
+      position: 'absolute',
+      top: Platform.OS === 'ios' ? 50 : 20, // Adjust top position based on platform (status bar)
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255, 255, 255, 0.7)', // Semi-transparent white
+      justifyContent: 'center',
+      alignItems: 'center',
+      // Add shadow/blur effect if possible/desired (can be complex in RN)
+       ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 3,
+          backgroundColor: colors.card, // Solid background fallback for Android
+        },
+      }),
+    },
+    backButton: {
+      left: 15,
+    },
+    wishlistButtonOverlay: {
+      right: 15,
+    },
+    // Details Section
+    detailsContainer: {
       padding: 20,
+      backgroundColor: colors.background, // White background as per Figma
+      borderTopLeftRadius: 20, // Rounded corners for the details section
+      borderTopRightRadius: 20,
+      marginTop: -20, // Pulls the section up slightly over the image bottom
+      zIndex: 1, // Ensure it sits above the image potentially
+    },
+    nameReviewRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start', // Align items to the top
+      marginBottom: 15,
     },
     name: {
-      fontSize: 26,
-      marginBottom: 12,
+      flex: 1, // Allow name to take available space
+      fontSize: 22, // Adjusted size
+      fontWeight: '600', // Semi-bold
+      marginRight: 10, // Space before reviews
+      color: colors.text,
     },
-    priceContainer: {
+    reviewContainer: {
       flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 10,
+      alignItems: 'center',
+      backgroundColor: colors.card, // Slightly different background? Or none?
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    reviewText: {
+      marginLeft: 5,
+      fontSize: 12,
+       color: colors.textSecondary,
+     },
+    // Price Row (Replaced Quantity Row)
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline', // Align text nicely
+      gap: 8, // Space between price and MRP
       marginBottom: 20,
     },
-    price: {
-      fontSize: 30,
-      fontWeight: 'bold',
+     price: { // Main price display
+       fontSize: 24,
+       fontWeight: 'bold',
+       color: colors.text,
+     },
+     mrp: { // Strikethrough MRP
+       fontSize: 16,
+       textDecorationLine: 'line-through',
+       color: colors.textSecondary,
+       // No longer needed marginLeft as gap handles spacing
+     },
+    // Re-adding quantity styles for bottom placement
+    quantityButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.border, // Button background
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    discountContainer: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 6,
-    },
-    mrp: {
-      fontSize: 18,
-      textDecorationLine: 'line-through',
-      opacity: colorScheme === 'dark' ? 0.5 : 0.6,
-    },
-    discount: {
+    quantityText: {
       fontSize: 16,
       fontWeight: '600',
+      minWidth: 30, // Ensure some space for the number
+      textAlign: 'center',
+      color: colors.text,
+      marginHorizontal: 8, // Space around the number
     },
+     // Common Section Styles
     section: {
-      marginTop: 20,
-      marginBottom: 12,
+      marginBottom: 20,
     },
     sectionTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      marginBottom: 10,
-    },
-    sectionContent: {
       fontSize: 16,
-      lineHeight: 24,
-      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
-      // Remove fixed lineHeight if using RenderHTML
+      fontWeight: '700', // Bold title
+      marginBottom: 12,
+      color: colors.text,
     },
-    floatingButtonContainer: {
+    descriptionText: {
+       fontSize: 14,
+       lineHeight: 22,
+       color: colors.textSecondary,
+     },
+    // Size/Color Selectors
+    selectorScrollContainer: {
+      gap: 10,
+    },
+    selectorButton: {
+      minWidth: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 15,
+    },
+    selectorButtonSelected: {
+       // Handled inline backgroundColor/borderColor
+    },
+    selectorButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    selectorButtonTextSelected: {
+       // Handled inline color
+    },
+    colorSelectorButton: {
+       width: 36,
+       height: 36,
+       borderRadius: 18,
+       borderWidth: 2,
+     },
+    colorSelectorButtonSelected: {
+       // Handled inline borderColor
+    },
+    // Bottom Button Area
+    bottomButtonContainer: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
       padding: 16,
-      paddingBottom: 24,
-      borderTopWidth: 1,
-      ...Platform.select({
-        ios: {
-          shadowColor: colorScheme === 'dark' ? colors.background : colors.text,
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
-          shadowRadius: 4,
-        },
-        android: {
-          elevation: 5,
-        },
-      }),
+      paddingBottom: Platform.OS === 'ios' ? 30 : 16, // Adjust for safe area bottom inset
+      backgroundColor: colors.background, // Match details background
+       borderTopWidth: 1,
+       borderTopColor: colors.border,
     },
-    buttonGroup: {
+    loggedInBottomRow: { // Container for quantity selector and button
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      flex: 1,
     },
-    wishlistButton: {
-      width: 48,
-      height: 48,
-      padding: 0,
-      justifyContent: 'center',
+    bottomQuantitySelector: {
+      flexDirection: 'row',
       alignItems: 'center',
-      borderWidth: 1.5,
-      borderRadius: 8,
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 6,
     },
-    addToCartWrapper: {
-      flex: 1,
+    addToCartButtonWrapper: {
+      flex: 1, // Allow button to take remaining space
     },
+    addToCartButton: {
+       backgroundColor: colors.text,
+       borderRadius: 30, // Highly rounded corners
+       height: 60, // Fixed height
+       paddingHorizontal: 10, // Reduce padding to let content spread
+    },
+     addToCartButtonContent: {
+       // Removed flexDirection: 'row' as it's just text now
+       alignItems: 'center', // Center vertically
+       justifyContent: 'center', // Center horizontally
+       width: '100%',
+       height: '100%', // Ensure View takes full button height for centering
+     },
+     addToCartButtonText: { // Text style remains simple
+       color: colors.background,
+       fontSize: 16,
+       fontWeight: '700',
+     },
+     // Removed unused styles: buttonCartIcon, buttonSeparatorText, buttonPriceText, buttonMrpTextInButton
   });
+}; // Corrected closing brace

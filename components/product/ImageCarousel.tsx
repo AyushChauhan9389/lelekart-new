@@ -45,22 +45,7 @@ export function ImageCarousel({ images: rawImages }: ImageCarouselProps) {
     />
   );
 
-  const renderThumbnail = (image: string, index: number) => (
-    <Pressable
-      key={index}
-      onPress={() => {
-        flatListRef.current?.scrollToIndex({ index, animated: true });
-        setActiveIndex(index);
-      }}>
-      <Image
-        source={{ uri: failedImages.has(image) ? PLACEHOLDER_IMAGE : image }}
-        style={[
-          styles.thumbnail,
-          { opacity: activeIndex === index ? 1 : 0.6 },
-        ]}
-      />
-    </Pressable>
-  );
+  // Thumbnail rendering removed
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { 
     viewableItems: Array<ViewToken>
@@ -86,9 +71,7 @@ export function ImageCarousel({ images: rawImages }: ImageCarouselProps) {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
       />
-      <View style={styles.thumbnailContainer}>
-        {validImages.map((image, index) => renderThumbnail(image, index))}
-      </View>
+      {/* Thumbnail container removed */}
     </View>
   );
 }
@@ -102,16 +85,5 @@ const styles = StyleSheet.create({
     height: WINDOW_WIDTH,
     resizeMode: 'contain',
   },
-  thumbnailContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    gap: 8,
-  },
-  thumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 4,
-    resizeMode: 'cover',
-  },
+  // Thumbnail styles removed
 });

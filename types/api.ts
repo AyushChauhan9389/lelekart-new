@@ -46,6 +46,10 @@ export interface Product {
   approved: boolean;
   rejected: boolean;
   createdAt: string;
+  rating?: number; // Added for product reviews
+  reviewCount?: number; // Added for product reviews
+  availableSizes?: string[]; // Added for size selection
+  availableColors?: string[]; // Added for color selection
 }
 
 export interface PaginatedResponse<T> {
