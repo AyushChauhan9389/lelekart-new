@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Pressable, Image } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { storage } from '@/utils/storage';
+import Toast from 'react-native-toast-message';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -16,6 +18,7 @@ import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 export default function WishlistScreen() {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageLoadingStates, setImageLoadingStates] = useState<{ [key: number]: boolean }>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<number | null>(null);
 
@@ -25,13 +28,23 @@ export default function WishlistScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
 
   const fetchWishlist = async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
     try {
-      const wishlistItems = await api.wishlist.getItems();
-      setItems(wishlistItems);
+      if (user) {
+        // Fetch from server if logged in
+        const wishlistItems = await api.wishlist.getItems();
+        setItems(wishlistItems);
+      } else {
+        // Fetch from local storage if not logged in
+        const localItems = await storage.wishlist.getItems();
+        // Convert local items to WishlistItem format
+        setItems(localItems.map(item => ({
+          id: item.productId, // Use productId as temporary item id
+          userId: 0,
+          productId: item.productId,
+          product: item.product,
+          dateAdded: item.dateAdded
+        })));
+      }
     } catch (error) {
       console.error('Failed to fetch wishlist:', error);
     } finally {
@@ -41,21 +54,54 @@ export default function WishlistScreen() {
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchWishlist();
-    setIsRefreshing(false);
+    try {
+      await fetchWishlist();
+      Toast.show({
+        type: 'success',
+        text1: 'Wishlist updated',
+        position: 'bottom',
+      });
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to refresh',
+        text2: 'Please try again',
+        position: 'bottom',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   }, []);
 
-  useEffect(() => {
-    fetchWishlist();
-  }, [user]); // Refetch when user logs in/out
+  useFocusEffect(
+    useCallback(() => {
+      fetchWishlist();
+    }, [])
+  );
 
   const handleRemoveItem = async (productId: number) => {
     try {
       setRemovingItemId(productId);
-      await api.wishlist.removeItem(productId);
-      setItems(items.filter(item => item.productId !== productId));
+      if (user) {
+        await api.wishlist.removeItem(productId);
+      } else {
+        await storage.wishlist.removeItem(productId);
+      }
+      Toast.show({
+        type: 'success',
+        text1: 'Item removed from wishlist',
+        position: 'bottom',
+      });
+      // Refetch the wishlist to ensure we have the latest data
+      await fetchWishlist();
     } catch (error) {
       console.error('Failed to remove item:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to remove item',
+        text2: 'Please try again',
+        position: 'bottom',
+      });
     } finally {
       setRemovingItemId(null);
     }
@@ -67,11 +113,6 @@ export default function WishlistScreen() {
         <ActivityIndicator size="large" color={colors.primary} />
       </ThemedView>
     );
-  }
-
-  // Show login prompt if user is not logged in
-  if (!user) {
-    return <LoginPrompt />;
   }
 
   // Show empty wishlist message if logged in but wishlist is empty
@@ -93,8 +134,16 @@ export default function WishlistScreen() {
       <NavigationHeader title="My Wishlist" />
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]} // Android
+            progressBackgroundColor={colors.card} // Android
+            progressViewOffset={Platform.OS === 'android' ? 80 : 0} // Better position on Android
+          />
         }
       >
         {items.map(item => (
@@ -107,10 +156,37 @@ export default function WishlistScreen() {
             ]}
             onPress={() => router.push(`/product/${item.product.id}`)}
           >
-            <Image
-              source={{ uri: item.product.imageUrl || item.product.image_url }}
-              style={styles.productImage}
-            />
+            <View style={[styles.productImageContainer, { backgroundColor: colors.surface }]}>
+              {imageLoadingStates[item.product.id] && (
+                <View style={styles.imageLoadingContainer}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              )}
+              <Image
+                source={{ uri: (() => {
+                let imageUrl = item.product.imageUrl || item.product.image_url;
+                if (!imageUrl && item.product.images) {
+                  try {
+                    const images = typeof item.product.images === 'string' 
+                      ? JSON.parse(item.product.images) 
+                      : item.product.images;
+                    if (Array.isArray(images) && images.length > 0) {
+                      imageUrl = images[0];
+                    }
+                  } catch {
+                    // Ignore parsing error
+                  }
+                }
+                return imageUrl || 'https://lelekart.in/images/electronics.svg';
+              })() }}
+                  style={[
+                    styles.productImage,
+                    imageLoadingStates[item.product.id] && { opacity: 0 }
+                  ]}
+                  onLoadStart={() => setImageLoadingStates(prev => ({ ...prev, [item.product.id]: true }))}
+                  onLoadEnd={() => setImageLoadingStates(prev => ({ ...prev, [item.product.id]: false }))}
+                />
+            </View>
             <View style={styles.itemContent}>
               <View style={styles.itemDetails}>
                 <ThemedText numberOfLines={2} style={styles.productName}>
@@ -178,7 +254,10 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     },
     scrollView: {
       flex: 1,
-      paddingTop: 16,
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: Platform.OS === 'ios' ? 32 : 16,
     },
     itemCard: {
       marginHorizontal: 16,
@@ -203,11 +282,29 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     itemCardPressed: {
       opacity: colorScheme === 'dark' ? 0.7 : 0.8,
     },
-    productImage: {
+    productImageContainer: {
       width: 100,
       height: 100,
-      resizeMode: 'cover',
-      backgroundColor: colors.border, // Placeholder background
+      borderTopLeftRadius: 12,
+      borderBottomLeftRadius: 12,
+      overflow: 'hidden',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    imageLoadingContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+    },
+    productImage: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'contain',
     },
     itemContent: {
       flex: 1,

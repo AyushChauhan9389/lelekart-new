@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { storage } from '@/utils/storage';
 import { 
   StyleSheet, 
   View, 
@@ -17,18 +18,16 @@ import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
-import type { CartItem } from '@/types/api';
-import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native'; // Removed LogIn icon
+import type { CartItem, StoredProduct } from '@/types/api';
+import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import the reusable component
-
-// Removed inline LoginPrompt component
+import { LoginPrompt } from '@/components/ui/LoginPrompt';
 
 export default function CartScreen() {
-  const { user, isLoading: isAuthLoading } = useAuth(); // Renamed isLoading to avoid conflict
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Keep this for cart data loading
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingItem, setUpdatingItem] = useState<number | null>(null);
 
@@ -39,8 +38,18 @@ export default function CartScreen() {
 
   const fetchCart = async () => {
     try {
-      const items = await api.cart.getItems();
-      setCartItems(items);
+      if (user) {
+        const items = await api.cart.getItems();
+        setCartItems(items);
+      } else {
+        const localItems = await storage.cart.getItems();
+        setCartItems(localItems.map(item => ({
+          id: item.product.id,
+          userId: 0,
+          quantity: item.quantity,
+          product: item.product as StoredProduct // Cast to handle complete product data
+        })));
+      }
     } catch (error) {
       console.error('Failed to fetch cart:', error);
     } finally {
@@ -64,12 +73,23 @@ export default function CartScreen() {
     if (quantity < 1) return;
     setUpdatingItem(id);
     try {
-      const result = await api.cart.updateQuantity(id, quantity);
-      setCartItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id ? { ...item, quantity: result.quantity } : item
-        )
-      );
+      if (user) {
+        const result = await api.cart.updateQuantity(id, quantity);
+        setCartItems(prevItems =>
+          prevItems.map(item =>
+            item.id === id ? { ...item, quantity: result.quantity } : item
+          )
+        );
+      } else {
+        await storage.cart.updateQuantity(id, quantity);
+        const localItems = await storage.cart.getItems();
+        setCartItems(localItems.map(item => ({
+          id: item.product.id,
+          userId: 0,
+          quantity: item.quantity,
+          product: item.product as StoredProduct
+        })));
+      }
     } catch (error) {
       console.error('Failed to update quantity:', error);
       await fetchCart();
@@ -81,7 +101,11 @@ export default function CartScreen() {
   const handleRemoveItem = async (id: number) => {
     setUpdatingItem(id);
     try {
-      await api.cart.removeItem(id);
+      if (user) {
+        await api.cart.removeItem(id);
+      } else {
+        await storage.cart.removeItem(id);
+      }
       setCartItems(prevItems => prevItems.filter(item => item.id !== id));
     } catch (error) {
       console.error('Failed to remove item:', error);
@@ -98,7 +122,6 @@ export default function CartScreen() {
   );
   const totalAmount = subtotalAmount + SHIPPING_COST;
 
-  // Handle auth loading state first
   if (isAuthLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -106,13 +129,7 @@ export default function CartScreen() {
       </ThemedView>
     );
   }
-  
-  // Show login prompt if user is not logged in
-  if (!user) {
-    return <LoginPrompt />;
-  }
-  
-  // Handle cart data loading state
+
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -121,7 +138,6 @@ export default function CartScreen() {
     );
   }
 
-  // Show empty cart message if logged in but cart is empty
   if (cartItems.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
@@ -150,97 +166,114 @@ export default function CartScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
       >
-        {cartItems.map(item => (
-          <View key={item.id} style={[styles.cartItem, { backgroundColor: colors.background }]}>
-            <Image
-              source={{ uri: item.product.imageUrl || item.product.image_url }}
-              style={[styles.productImage, { backgroundColor: colors.surface }]}
-            />
-            <View style={styles.itemDetails}>
-              <ThemedText numberOfLines={2} style={styles.productName}>
-                {item.product.name}
-              </ThemedText>
-              <View style={styles.priceBlock}>
-                <View style={styles.priceRow}>
-                  <ThemedText style={[styles.price, { color: colors.primary }]}>
-                    ₹{item.product.price}
-                  </ThemedText>
-                  {item.product.mrp > item.product.price && (
-                    <>
-                      <ThemedText style={[styles.mrp, { color: colors.textSecondary }]}>
-                        ₹{item.product.mrp}
-                      </ThemedText>
-                      <View style={[styles.discountBadge, { backgroundColor: colorScheme === 'dark' ? `${colors.success}30` : `${colors.success}15` }]}>
-                        <ThemedText style={[styles.discountText, { color: colors.success }]}>
-                          {Math.round(((item.product.mrp - item.product.price) / item.product.mrp) * 100)}% OFF
-                        </ThemedText>
-                      </View>
-                    </>
-                  )}
-                </View>
-                <View style={styles.subtotalRow}>
-                  <ThemedText style={[styles.itemSubtotal, { color: colors.textSecondary }]}>
-                    Total: ₹{item.product.price * item.quantity}
-                  </ThemedText>
-                  {item.product.mrp > item.product.price && (
-                    <ThemedText style={[styles.savingsText, { color: colors.success }]}>
-                      Save: ₹{(item.product.mrp - item.product.price) * item.quantity}
+        {cartItems.map(item => {
+          // Get the first image from the product
+          let imageUrl = item.product.imageUrl || item.product.image_url;
+          if (!imageUrl && item.product.images) {
+            try {
+              const images = typeof item.product.images === 'string' 
+                ? JSON.parse(item.product.images) 
+                : item.product.images;
+              if (Array.isArray(images) && images.length > 0) {
+                imageUrl = images[0];
+              }
+            } catch {
+              // Ignore parsing error, use default image
+            }
+          }
+
+          return (
+            <View key={item.id} style={[styles.cartItem, { backgroundColor: colors.background }]}>
+              <Image
+                source={{ uri: imageUrl }}
+                style={[styles.productImage, { backgroundColor: colors.surface }]}
+              />
+              <View style={styles.itemDetails}>
+                <ThemedText numberOfLines={2} style={styles.productName}>
+                  {item.product.name}
+                </ThemedText>
+                <View style={styles.priceBlock}>
+                  <View style={styles.priceRow}>
+                    <ThemedText style={[styles.price, { color: colors.primary }]}>
+                      ₹{item.product.price}
                     </ThemedText>
-                  )}
+                    {item.product.mrp > item.product.price && (
+                      <>
+                        <ThemedText style={[styles.mrp, { color: colors.textSecondary }]}>
+                          ₹{item.product.mrp}
+                        </ThemedText>
+                        <View style={[styles.discountBadge, { backgroundColor: colorScheme === 'dark' ? `${colors.success}30` : `${colors.success}15` }]}>
+                          <ThemedText style={[styles.discountText, { color: colors.success }]}>
+                            {Math.round(((item.product.mrp - item.product.price) / item.product.mrp) * 100)}% OFF
+                          </ThemedText>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                  <View style={styles.subtotalRow}>
+                    <ThemedText style={[styles.itemSubtotal, { color: colors.textSecondary }]}>
+                      Total: ₹{item.product.price * item.quantity}
+                    </ThemedText>
+                    {item.product.mrp > item.product.price && (
+                      <ThemedText style={[styles.savingsText, { color: colors.success }]}>
+                        Save: ₹{(item.product.mrp - item.product.price) * item.quantity}
+                      </ThemedText>
+                    )}
+                  </View>
                 </View>
-              </View>
-              
-              <View style={[styles.quantityContainer, { backgroundColor: colors.surface }]}>
-                <Pressable
-                  onPress={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                  disabled={updatingItem === item.id || item.quantity <= 1}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.quantityButton,
-                    { backgroundColor: colors.background, borderColor: colors.border },
-                    pressed && [styles.buttonPressed, { backgroundColor: colors.surface }],
-                    (updatingItem === item.id || item.quantity <= 1) && styles.buttonDisabled
-                  ]}
-                >
-                  <Minus size={18} color={updatingItem === item.id || item.quantity <= 1 ? colors.textSecondary : colors.text} />
-                </Pressable>
                 
-                <ThemedText style={styles.quantity}>{item.quantity}</ThemedText>
-                
-                <Pressable
-                  onPress={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                  disabled={updatingItem === item.id}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.quantityButton,
-                    { backgroundColor: colors.background, borderColor: colors.border },
-                    pressed && [styles.buttonPressed, { backgroundColor: colors.surface }],
-                    updatingItem === item.id && styles.buttonDisabled
-                  ]}
-                >
-                  <Plus size={18} color={updatingItem === item.id ? colors.textSecondary : colors.text} />
-                </Pressable>
-                
-                <Pressable
-                  onPress={() => handleRemoveItem(item.id)}
-                  disabled={updatingItem === item.id}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.removeButton,
-                    { 
-                      borderColor: `${colors.error}30`,
-                      backgroundColor: colorScheme === 'dark' ? `${colors.error}20` : `${colors.error}10`
-                    },
-                    pressed && styles.buttonPressed,
-                    updatingItem === item.id && styles.buttonDisabled
-                  ]}
-                >
-                  <Trash2 size={18} color={updatingItem === item.id ? colors.textSecondary : colors.error} />
-                </Pressable>
+                <View style={[styles.quantityContainer, { backgroundColor: colors.surface }]}>
+                  <Pressable
+                    onPress={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                    disabled={updatingItem === item.id || item.quantity <= 1}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.quantityButton,
+                      { backgroundColor: colors.background, borderColor: colors.border },
+                      pressed && [styles.buttonPressed, { backgroundColor: colors.surface }],
+                      (updatingItem === item.id || item.quantity <= 1) && styles.buttonDisabled
+                    ]}
+                  >
+                    <Minus size={18} color={updatingItem === item.id || item.quantity <= 1 ? colors.textSecondary : colors.text} />
+                  </Pressable>
+                  
+                  <ThemedText style={styles.quantity}>{item.quantity}</ThemedText>
+                  
+                  <Pressable
+                    onPress={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                    disabled={updatingItem === item.id}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.quantityButton,
+                      { backgroundColor: colors.background, borderColor: colors.border },
+                      pressed && [styles.buttonPressed, { backgroundColor: colors.surface }],
+                      updatingItem === item.id && styles.buttonDisabled
+                    ]}
+                  >
+                    <Plus size={18} color={updatingItem === item.id ? colors.textSecondary : colors.text} />
+                  </Pressable>
+                  
+                  <Pressable
+                    onPress={() => handleRemoveItem(item.id)}
+                    disabled={updatingItem === item.id}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.removeButton,
+                      { 
+                        borderColor: `${colors.error}30`,
+                        backgroundColor: colorScheme === 'dark' ? `${colors.error}20` : `${colors.error}10`
+                      },
+                      pressed && styles.buttonPressed,
+                      updatingItem === item.id && styles.buttonDisabled
+                    ]}
+                  >
+                    <Trash2 size={18} color={updatingItem === item.id ? colors.textSecondary : colors.error} />
+                  </Pressable>
+                </View>
               </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
 
       <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
@@ -268,8 +301,9 @@ export default function CartScreen() {
         </View>
         <Button 
           fullWidth 
+          disabled={!user}
           onPress={() => router.push('/checkout')}>
-          Continue to Checkout
+          {user ? 'Continue to Checkout' : 'Login to Checkout'}
         </Button>
       </View>
     </ThemedView>
@@ -463,5 +497,4 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       marginTop: 24,
       minWidth: 200,
     },
-    // Removed inline login prompt styles
   });

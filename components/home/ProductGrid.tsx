@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Import useState, useEffect, useMemo, useCallback
-import { Dimensions, Image, Pressable, StyleSheet, View, FlatList, Platform, TouchableOpacity, ActivityIndicator } from 'react-native'; // Import TouchableOpacity, ActivityIndicator
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Dimensions, Image, Pressable, StyleSheet, View, FlatList, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { storage } from '@/utils/storage';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { ThemedText } from '@/components/ThemedText';
@@ -61,20 +62,25 @@ export function ProductGrid({ data }: ProductGridProps) {
     useEffect(() => {
       let isMounted = true;
       const checkStatus = async () => {
-        if (user && item) {
-          setUpdatingWishlist(true); // Show loading indicator while checking
-          try {
+        setUpdatingWishlist(true);
+        try {
+          if (user) {
+            // Check server wishlist if logged in
             const { inWishlist } = await api.wishlist.checkItem(item.id);
             if (isMounted) setIsInWishlist(inWishlist);
-          } catch (error) {
-             if (isMounted && !(error instanceof Error && error.message.includes('404'))) {
-                console.error(`Failed to check wishlist status for item ${item.id}:`, error);
-             }
-          } finally {
-             if (isMounted) setUpdatingWishlist(false);
+          } else if (item) {
+            // Check local storage if not logged in
+            const items = await storage.wishlist.getItems();
+            if (isMounted) {
+              setIsInWishlist(items.some(wishlistItem => wishlistItem.productId === item.id));
+            }
           }
-        } else {
-          if (isMounted) setIsInWishlist(false);
+        } catch (error) {
+          if (isMounted && !(error instanceof Error && error.message.includes('404'))) {
+            console.error(`Failed to check wishlist status for item ${item.id}:`, error);
+          }
+        } finally {
+          if (isMounted) setUpdatingWishlist(false);
         }
       };
       checkStatus();
@@ -82,17 +88,28 @@ export function ProductGrid({ data }: ProductGridProps) {
     }, [user, item]);
 
     const handleWishlistToggle = async () => {
-      if (!user) { router.push('/(auth)/login'); return; }
-      if (updatingWishlist || !item) return;
+      if (!item || updatingWishlist) return;
       setUpdatingWishlist(true);
       try {
         let message = '';
-        if (isInWishlist) {
-          await api.wishlist.removeItem(item.id);
-          message = 'Removed from Wishlist';
+        if (user) {
+          // Use server API if logged in
+          if (isInWishlist) {
+            await api.wishlist.removeItem(item.id);
+            message = 'Removed from Wishlist';
+          } else {
+            await api.wishlist.addItem(item.id);
+            message = 'Added to Wishlist';
+          }
         } else {
-          await api.wishlist.addItem(item.id);
-          message = 'Added to Wishlist';
+          // Use local storage if not logged in
+          if (isInWishlist) {
+            await storage.wishlist.removeItem(item.id);
+            message = 'Removed from Wishlist';
+          } else {
+            await storage.wishlist.addItem(item);
+            message = 'Added to Wishlist';
+          }
         }
         setIsInWishlist(!isInWishlist);
         Toast.show({ type: 'success', text1: message, position: 'bottom' });
@@ -105,11 +122,16 @@ export function ProductGrid({ data }: ProductGridProps) {
     };
 
     const handleAddToCart = async () => {
-      if (!user) { router.push('/(auth)/login'); return; }
-      if (addingToCart || !item) return;
+      if (!item || addingToCart) return;
       setAddingToCart(true);
       try {
-        await api.cart.addItem(item.id, 1); // Add quantity 1
+        if (user) {
+          // Add to server cart if logged in
+          await api.cart.addItem(item.id, 1);
+        } else {
+          // Add to local storage cart if not logged in
+          await storage.cart.addItem(item, 1);
+        }
         Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${item.name} added.`, position: 'bottom' });
       } catch (error) {
         console.error('Failed to add to cart:', error);
@@ -134,23 +156,22 @@ export function ProductGrid({ data }: ProductGridProps) {
           <View style={styles.imageContainer}>
             <Image source={imageSource} style={styles.image} />
             {/* Wishlist Button Overlay */}
-            {user && ( // Only show if user is logged in
-              <TouchableOpacity
-                style={[styles.overlayButton, styles.wishlistButton]}
-                onPress={handleWishlistToggle}
-                disabled={updatingWishlist}
-              >
-                {updatingWishlist ? (
-                  <ActivityIndicator size="small" color={colors.textSecondary} />
-                ) : (
-                  <Heart
-                    size={18}
-                    color={isInWishlist ? colors.error : colors.textSecondary}
-                    fill={isInWishlist ? colors.error : 'none'}
-                  />
-                )}
-              </TouchableOpacity>
-            )}
+            {/* Always show wishlist button */}
+            <TouchableOpacity
+              style={[styles.overlayButton, styles.wishlistButton]}
+              onPress={handleWishlistToggle}
+              disabled={updatingWishlist}
+            >
+              {updatingWishlist ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <Heart
+                  size={18}
+                  color={isInWishlist ? colors.error : colors.textSecondary}
+                  fill={isInWishlist ? colors.error : 'none'}
+                />
+              )}
+            </TouchableOpacity>
             {/* Add to Cart Button Overlay Removed */}
           </View>
           {/* Content Below Image */}
@@ -175,17 +196,15 @@ export function ProductGrid({ data }: ProductGridProps) {
             )}
           </View>
           {/* Add to Cart Button Below Content */}
-          {user && (
-            <Button
-              onPress={handleAddToCart}
-              disabled={addingToCart}
-              style={styles.addToCartButton}
-              size="sm"
-              leftIcon={!addingToCart ? <ShoppingCart size={16} color={colors.background} /> : undefined} // Add icon
-            >
-              {addingToCart ? 'Adding...' : 'Add to Cart'}
-            </Button>
-          )}
+          <Button
+            onPress={handleAddToCart}
+            disabled={addingToCart}
+            style={styles.addToCartButton}
+            size="sm"
+            leftIcon={!addingToCart ? <ShoppingCart size={16} color={colors.background} /> : undefined}
+          >
+            {addingToCart ? 'Adding...' : 'Add to Cart'}
+          </Button>
         </View>
         </Pressable>
       </View>

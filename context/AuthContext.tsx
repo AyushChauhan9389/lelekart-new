@@ -1,8 +1,9 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import type { User, VerifyOTPResponse } from '@/types/api';
+import type { User, VerifyOTPResponse, CartItem, WishlistItem } from '@/types/api';
 import { api } from '@/utils/api';
 import { router } from 'expo-router';
+import { storage } from '@/utils/storage';
 
 interface AuthContextType {
   user: User | null;
@@ -56,13 +57,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Login function that sets the user from verify OTP response
+  // Login function that sets the user and merges local data
   const login = async (response: VerifyOTPResponse) => {
     try {
       if (!response.user) {
         throw new Error('No user data in response');
       }
+
+      // Set user first to enable API calls
       setUser(response.user);
+
+      // Fetch current server cart and wishlist
+      const [serverCart, serverWishlist] = await Promise.all([
+        api.cart.getItems(),
+        api.wishlist.getItems(),
+      ]);
+
+      // Merge local cart with server cart
+      const mergedCart = await storage.mergeWithServer.mergeCart(serverCart);
+      
+      // Update server with merged cart items
+      await Promise.all(mergedCart.map(async (item) => {
+        if (item.id === 0) {
+          // New item from local storage
+          await api.cart.addItem(item.product.id, item.quantity);
+        } else {
+          // Existing item with updated quantity
+          await api.cart.updateQuantity(item.id, item.quantity);
+        }
+      }));
+
+      // Merge local wishlist with server wishlist
+      const mergedWishlist = await storage.mergeWithServer.mergeWishlist(serverWishlist);
+      
+      // Update server with merged wishlist items
+      await Promise.all(mergedWishlist.map(async (item) => {
+        if (item.id === 0) {
+          // New item from local storage
+          await api.wishlist.addItem(item.productId);
+        }
+      }));
+
     } catch (error) {
       console.error('Failed to process login:', error);
       throw error;

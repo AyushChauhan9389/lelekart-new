@@ -1,50 +1,43 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text } from 'react-native'; // Added TouchableOpacity, Text
+import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import RenderHTML from 'react-native-render-html';
+import { storage } from '@/utils/storage';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/context/AuthContext';
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { Button } from '@/components/ui/Button';
-import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Zap } from 'lucide-react-native'; // Removed Plus/Minus, Added Zap
+import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Zap } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
 import { api } from '@/utils/api';
 
 export default function ProductScreen() {
+  // Route params
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [addingToCart, setAddingToCart] = useState(false);
-  const [isInWishlist, setIsInWishlist] = useState(false);
-  const [updatingWishlist, setUpdatingWishlist] = useState(false);
-  // Removed quantity state
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-
+  
+  // Theme hooks
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
+  const { width } = useWindowDimensions();
+  
+  // Auth context
   const { user, isLoading: isAuthLoading } = useAuth();
-  const { width } = useWindowDimensions(); // Get window width
+  
+  // State
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [updatingWishlist, setUpdatingWishlist] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
-  useEffect(() => {
-    const checkWishlist = async () => {
-      if (user && product) {
-        try {
-          const { inWishlist } = await api.wishlist.checkItem(product.id);
-          setIsInWishlist(inWishlist);
-        } catch (error) {
-          console.error('Failed to check wishlist status:', error);
-        }
-      }
-    };
-    checkWishlist();
-  }, [user, product]);
-
+  // Product fetching
   useEffect(() => {
     const fetchProduct = async () => {
       if (!id) {
@@ -64,57 +57,83 @@ export default function ProductScreen() {
     fetchProduct();
   }, [id]);
 
-  if (isLoading || isAuthLoading) {
-    return (
-      <ThemedView style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </ThemedView>
-    );
-  }
-
-  if (!product) {
-    return (
-      <ThemedView style={styles.centeredContainer}>
-        <ThemedText>Product not found</ThemedText>
-      </ThemedView>
-    );
-  }
-
-  let productImages: string[] = [];
-  try {
-    if (product.images) {
-      if (typeof product.images === 'string') {
-        try {
-          productImages = JSON.parse(product.images);
-        } catch (error) {
-          const cleanJson = product.images.replace(/^"/, '').replace(/"$/, '');
-          const matches = cleanJson.match(/"([^"]+)"/g);
-          if (matches) {
-            productImages = matches.map(url => url.replace(/"/g, ''));
-          } else if (product.images.includes('http')) {
-            productImages = [product.images];
+  // Wishlist status check
+  useEffect(() => {
+    let isMounted = true;
+    const checkWishlistStatus = async () => {
+      if (!product) return;
+      setUpdatingWishlist(true);
+      try {
+        if (user) {
+          // Check server wishlist if logged in
+          const { inWishlist } = await api.wishlist.checkItem(product.id);
+          if (isMounted) setIsInWishlist(inWishlist);
+        } else {
+          // Check local storage if not logged in
+          const items = await storage.wishlist.getItems();
+          if (isMounted) {
+            setIsInWishlist(items.some(item => item.productId === product.id));
           }
         }
-      } else if (Array.isArray(product.images)) {
-        productImages = product.images;
+      } catch (error) {
+        if (isMounted) {
+          console.error('Failed to check wishlist status:', error);
+        }
+      } finally {
+        if (isMounted) {
+          setUpdatingWishlist(false);
+        }
       }
+    };
+
+    checkWishlistStatus();
+    return () => { isMounted = false; };
+  }, [user, product]);
+
+  // Image processing
+  const { mainImage, carouselImages } = useMemo(() => {
+    let productImages: string[] = [];
+    try {
+      if (product?.images) {
+        if (typeof product.images === 'string') {
+          try {
+            productImages = JSON.parse(product.images);
+          } catch (error) {
+            const cleanJson = product.images.replace(/^"/, '').replace(/"$/, '');
+            const matches = cleanJson.match(/"([^"]+)"/g);
+            if (matches) {
+              productImages = matches.map(url => url.replace(/"/g, ''));
+            } else if (product.images.includes('http')) {
+              productImages = [product.images];
+            }
+          }
+        } else if (Array.isArray(product.images)) {
+          productImages = product.images;
+        }
+      }
+    } catch (error) {
+      console.error('Error handling images:', error);
+      productImages = [];
     }
-  } catch (error) {
-    console.error('Error handling images:', error);
-    productImages = [];
-  }
 
-  const mainImage = product.imageUrl || product.image_url || productImages[0] || '';
-  const validProductImages = productImages.filter(img => img && typeof img === 'string');
-  // Ensure mainImage is not duplicated in the carousel list
-  const carouselImages = [mainImage, ...validProductImages.filter(img => img !== mainImage)];
+    const mainImage = product?.imageUrl || product?.image_url || productImages[0] || '';
+    const validProductImages = productImages.filter(img => img && typeof img === 'string');
+    return {
+      mainImage,
+      carouselImages: [mainImage, ...validProductImages.filter(img => img !== mainImage)]
+    };
+  }, [product]);
 
-
+  // Action handlers
   const handleAddToCart = async () => {
     if (!product || addingToCart) return;
     setAddingToCart(true);
     try {
-      await api.cart.addItem(product.id, 1); // Always add quantity 1
+      if (user) {
+        await api.cart.addItem(product.id, 1);
+      } else {
+        await storage.cart.addItem(product, 1);
+      }
       Toast.show({
         type: 'success',
         text1: 'Added to Cart',
@@ -134,19 +153,15 @@ export default function ProductScreen() {
     }
   };
 
-  // Handler for Buy Now button
   const handleBuyNow = async () => {
-    if (!product) return; // Ensure product is loaded
+    if (!product) return;
     if (!user) {
-      router.push('/(auth)/login'); // Redirect if not logged in
+      router.push('/(auth)/login');
       return;
     }
 
     try {
-      // First add to cart
       await api.cart.addItem(product.id, 1);
-      
-      // Then navigate to checkout
       router.push('/checkout');
     } catch (error) {
       console.error('Failed to add item to cart:', error);
@@ -160,51 +175,36 @@ export default function ProductScreen() {
   };
 
   const handleWishlistToggle = async () => {
-    console.log('[Wishlist] Toggle triggered. Current state:', {
-      productId: product?.id,
-      updatingWishlist,
-      isInWishlist,
-      user: !!user, // Check if user object exists
-    });
-
-    if (!user) {
-      console.log('[Wishlist] No user logged in. Redirecting to login.');
-      router.push('/(auth)/login'); // Redirect if not logged in
-      return;
-    }
-
-    if (!product || updatingWishlist) {
-      console.log('[Wishlist] Aborting: No product or already updating.');
-      return;
-    }
-
+    if (!product || updatingWishlist) return;
+    
     setUpdatingWishlist(true);
-    console.log('[Wishlist] setUpdatingWishlist(true)');
-
     try {
       let message = '';
-      let response; // Variable to hold API response
-      if (isInWishlist) {
-        console.log('[Wishlist] Attempting to remove item:', product.id);
-        response = await api.wishlist.removeItem(product.id);
-        console.log('[Wishlist] removeItem response:', response); // Log response
-        message = 'Removed from Wishlist';
+      if (user) {
+        if (isInWishlist) {
+          await api.wishlist.removeItem(product.id);
+          message = 'Removed from Wishlist';
+        } else {
+          await api.wishlist.addItem(product.id);
+          message = 'Added to Wishlist';
+        }
       } else {
-        console.log('[Wishlist] Attempting to add item:', product.id);
-        response = await api.wishlist.addItem(product.id);
-        console.log('[Wishlist] addItem response:', response); // Log response
-        message = 'Added to Wishlist';
+        if (isInWishlist) {
+          await storage.wishlist.removeItem(product.id);
+          message = 'Removed from Wishlist';
+        } else {
+          await storage.wishlist.addItem(product);
+          message = 'Added to Wishlist';
+        }
       }
       setIsInWishlist(!isInWishlist);
-      console.log('[Wishlist] setIsInWishlist ->', !isInWishlist);
       Toast.show({
         type: 'success',
         text1: message,
         position: 'bottom',
       });
-      console.log('[Wishlist] Toast shown:', message);
     } catch (error) {
-      console.error('[Wishlist] Failed to update wishlist:', error); // Log the full error
+      console.error('Failed to update wishlist:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -213,9 +213,24 @@ export default function ProductScreen() {
       });
     } finally {
       setUpdatingWishlist(false);
-      console.log('[Wishlist] setUpdatingWishlist(false)');
     }
   };
+
+  if (isLoading || isAuthLoading) {
+    return (
+      <ThemedView style={styles.centeredContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </ThemedView>
+    );
+  }
+
+  if (!product) {
+    return (
+      <ThemedView style={styles.centeredContainer}>
+        <ThemedText>Product not found</ThemedText>
+      </ThemedView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -226,27 +241,25 @@ export default function ProductScreen() {
       >
         {/* Image Carousel with Overlay Buttons */}
         <View style={styles.imageContainer}>
-          <ImageCarousel images={carouselImages} /> {/* Use deduplicated images */}
+          <ImageCarousel images={carouselImages} />
           <TouchableOpacity
             style={[styles.overlayButton, styles.backButton]}
             onPress={() => router.back()}
           >
             <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          {user && (
-             <TouchableOpacity
-               style={[styles.overlayButton, styles.wishlistButtonOverlay]}
-               onPress={handleWishlistToggle}
-               disabled={updatingWishlist}
-             >
-               <Heart
-                 size={24}
-                 color={isInWishlist ? colors.error : colors.text} // Use error color for filled heart
-                 fill={isInWishlist ? colors.error : 'none'}
-                 strokeWidth={2}
-               />
-             </TouchableOpacity>
-           )}
+          <TouchableOpacity
+            style={[styles.overlayButton, styles.wishlistButtonOverlay]}
+            onPress={handleWishlistToggle}
+            disabled={updatingWishlist}
+          >
+            <Heart
+              size={24}
+              color={isInWishlist ? colors.error : colors.text}
+              fill={isInWishlist ? colors.error : 'none'}
+              strokeWidth={2}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Product Details Section */}
@@ -259,13 +272,12 @@ export default function ProductScreen() {
               <View style={styles.reviewContainer}>
                  <Star size={16} color={colors.warning} fill={colors.warning} />
                  <ThemedText style={styles.reviewText}>
-                   {product.rating ?? 5.0} ({product.reviewCount ?? '7k+'} reviews) {/* Placeholder data */}
+                   {product.rating ?? 5.0} ({product.reviewCount ?? '7k+'} reviews)
                  </ThemedText>
               </View>
            </View>
 
            {/* Price Row */}
-           {/* Removed console log from here */}
            <View style={styles.priceRow}>
              <ThemedText type="subtitle" style={styles.price}>
                ₹{product.price}
@@ -277,21 +289,17 @@ export default function ProductScreen() {
 
            {/* Description */}
            <View style={styles.section}>
-              {/* Use simple text for now, add "Read More" later if needed */}
               <ThemedText style={styles.descriptionText} numberOfLines={3}>
-                 {/* Basic cleanup for potential HTML */}
                  {product.description.replace(/<[^>]*>/g, '')}
               </ThemedText>
-              {/* TODO: Add "Read More..." functionality */}
            </View>
 
            {/* Size Selector */}
-           {/* TODO: Replace with actual sizes from product data */}
            {product.availableSizes && product.availableSizes.length > 0 && (
              <View style={styles.section}>
                <ThemedText type="subtitle" style={styles.sectionTitle}>Choose Size</ThemedText>
                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
-                 {product.availableSizes.map((size: string) => ( // Added type: string
+                 {product.availableSizes.map((size: string) => (
                    <TouchableOpacity
                      key={size}
                      style={[
@@ -313,18 +321,17 @@ export default function ProductScreen() {
            )}
 
            {/* Color Selector */}
-           {/* TODO: Replace with actual colors from product data */}
            {product.availableColors && product.availableColors.length > 0 && (
              <View style={styles.section}>
                <ThemedText type="subtitle" style={styles.sectionTitle}>Color</ThemedText>
                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
-                 {product.availableColors.map((color: string) => ( // Added type: string
+                 {product.availableColors.map((color: string) => (
                    <TouchableOpacity
                      key={color}
                      style={[
                        styles.colorSelectorButton,
                        selectedColor === color ? styles.colorSelectorButtonSelected : {},
-                       { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : colors.border } // Use actual color
+                       { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : colors.border }
                      ]}
                      onPress={() => setSelectedColor(color)}
                    />
@@ -333,7 +340,7 @@ export default function ProductScreen() {
              </View>
             )}
 
-            {/* Render specifications if available */}
+            {/* Specifications */}
             {product.specifications && (
               <View style={styles.section}>
                 <ThemedText type="subtitle" style={styles.sectionTitle}>Specifications</ThemedText>
@@ -345,30 +352,26 @@ export default function ProductScreen() {
                 />
               </View>
              )}
-
         </View>
       </ScrollView>
 
-      {/* Bottom Add to Cart Button */}
+      {/* Bottom Action Buttons */}
       <View style={styles.bottomButtonContainer}>
-        {user ? (
-          <View style={styles.loggedInBottomRow}>
-            {/* Quantity Selector Removed */}
-
-            {/* Action Buttons */}
-            <View style={styles.buttonWrapper}>
-              <Button
-                onPress={handleAddToCart}
-                style={styles.cartButton}
-                variant="outline"
-                disabled={addingToCart}
-                textStyle={{ color: colors.text }}
-                leftIcon={<ShoppingCart size={20} color={colors.text} />}
-              >
-                Cart
-              </Button>
-            </View>
-            <View style={styles.buttonWrapper}>
+        <View style={styles.loggedInBottomRow}>
+          <View style={styles.buttonWrapper}>
+            <Button
+              onPress={handleAddToCart}
+              style={styles.cartButton}
+              variant="outline"
+              disabled={addingToCart}
+              textStyle={{ color: colors.text }}
+              leftIcon={<ShoppingCart size={20} color={colors.text} />}
+            >
+              Cart
+            </Button>
+          </View>
+          <View style={styles.buttonWrapper}>
+            {user ? (
               <Button
                 onPress={handleBuyNow}
                 style={styles.buyButton}
@@ -376,31 +379,30 @@ export default function ProductScreen() {
               >
                 Buy Now
               </Button>
-            </View>
+            ) : (
+              <Button
+                onPress={() => router.push('/(auth)/login')}
+                style={styles.buyButton}
+                leftIcon={<LogIn size={20} color={colors.background} />}
+              >
+                Login to Buy
+              </Button>
+            )}
           </View>
-        ) : ( // Correct structure for logged-out state
-          <Button
-            onPress={() => router.push('/(auth)/login')}
-            style={styles.buyButton} // Use buyButton style for consistency
-            leftIcon={<LogIn size={20} color={colors.background} />}
-          >
-            Login to Add
-          </Button>
-        )}
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
-const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) => {
-  const isDark = colorScheme === 'dark';
-  return StyleSheet.create({
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) =>
+  StyleSheet.create({
     safeArea: {
       flex: 1,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background, // Match details background for seamless scrolling area
+      backgroundColor: colors.background,
     },
     centeredContainer: {
       flex: 1,
@@ -409,25 +411,22 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       backgroundColor: colors.background,
     },
     scrollContentContainer: {
-      paddingBottom: 90, // Adjust padding to allow space for floating bar without being excessive
+      paddingBottom: 90,
     },
-    // Image Section
     imageContainer: {
-      // ImageCarousel likely handles its own height/aspect ratio
-      position: 'relative', // Needed for absolute positioning of buttons
-      backgroundColor: colors.border, // Placeholder background for image area
+      position: 'relative',
+      backgroundColor: colors.border,
     },
     overlayButton: {
       position: 'absolute',
-      top: Platform.OS === 'ios' ? 60 : 30, // Increased top margin to avoid status bar overlap
+      top: Platform.OS === 'ios' ? 60 : 30,
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: 'rgba(255, 255, 255, 0.7)', // Semi-transparent white
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
       justifyContent: 'center',
       alignItems: 'center',
-      // Add shadow/blur effect if possible/desired (can be complex in RN)
-       ...Platform.select({
+      ...Platform.select({
         ios: {
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
@@ -436,7 +435,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
         },
         android: {
           elevation: 3,
-          backgroundColor: colors.card, // Solid background fallback for Android
+          backgroundColor: colors.card,
         },
       }),
     },
@@ -446,32 +445,31 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     wishlistButtonOverlay: {
       right: 15,
     },
-    // Details Section
     detailsContainer: {
       padding: 20,
-      backgroundColor: colors.background, // White background as per Figma
-      borderTopLeftRadius: 20, // Rounded corners for the details section
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
-      marginTop: -20, // Pulls the section up slightly over the image bottom
-      zIndex: 1, // Ensure it sits above the image potentially
+      marginTop: -20,
+      zIndex: 1,
     },
     nameReviewRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start', // Align items to the top
+      alignItems: 'flex-start',
       marginBottom: 15,
     },
     name: {
-      flex: 1, // Allow name to take available space
-      fontSize: 22, // Adjusted size
-      fontWeight: '600', // Semi-bold
-      marginRight: 10, // Space before reviews
+      flex: 1,
+      fontSize: 22,
+      fontWeight: '600',
+      marginRight: 10,
       color: colors.text,
     },
     reviewContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.card, // Slightly different background? Or none?
+      backgroundColor: colors.card,
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 12,
@@ -479,42 +477,38 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     reviewText: {
       marginLeft: 5,
       fontSize: 12,
-       color: colors.textSecondary,
-     },
-    // Price Row (Replaced Quantity Row)
+      color: colors.textSecondary,
+    },
     priceRow: {
       flexDirection: 'row',
-      alignItems: 'baseline', // Align text nicely
-      gap: 8, // Space between price and MRP
+      alignItems: 'baseline',
+      gap: 8,
       marginBottom: 20,
     },
-     price: { // Main price display
-       fontSize: 24,
-       fontWeight: 'bold',
-       color: colors.text,
-     },
-     mrp: { // Strikethrough MRP
-       fontSize: 16,
-       textDecorationLine: 'line-through',
-     color: colors.textSecondary,
-   },
-  // Removed quantity styles (quantityButton, quantityText, bottomQuantitySelector)
-     // Common Section Styles
+    price: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    mrp: {
+      fontSize: 16,
+      textDecorationLine: 'line-through',
+      color: colors.textSecondary,
+    },
     section: {
       marginBottom: 20,
     },
     sectionTitle: {
       fontSize: 16,
-      fontWeight: '700', // Bold title
+      fontWeight: '700',
       marginBottom: 12,
       color: colors.text,
     },
     descriptionText: {
-       fontSize: 14,
-       lineHeight: 22,
-       color: colors.textSecondary,
-     },
-    // Size/Color Selectors
+      fontSize: 14,
+      lineHeight: 22,
+      color: colors.textSecondary,
+    },
     selectorScrollContainer: {
       gap: 10,
     },
@@ -527,38 +521,38 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       alignItems: 'center',
       paddingHorizontal: 15,
     },
-    selectorButtonSelected: {
-       // Handled inline backgroundColor/borderColor
-    },
     selectorButtonText: {
       fontSize: 14,
       fontWeight: '600',
     },
+    selectorButtonSelected: {
+      backgroundColor: colors.text,
+      borderColor: colors.text,
+    },
     selectorButtonTextSelected: {
-       // Handled inline color
+      color: colors.background,
     },
     colorSelectorButton: {
-       width: 36,
-       height: 36,
-       borderRadius: 18,
-       borderWidth: 2,
-     },
-    colorSelectorButtonSelected: {
-       // Handled inline borderColor
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: 2,
     },
-    // Bottom Button Area
+    colorSelectorButtonSelected: {
+      borderColor: colors.primary,
+      borderWidth: 3,
+    },
     bottomButtonContainer: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
       padding: 16,
-      paddingBottom: Platform.OS === 'ios' ? 30 : 16, // Adjust for safe area bottom inset
-      backgroundColor: colors.background, // Match details background
-       borderTopWidth: 1,
-       borderTopColor: colors.border,
-       // Add shadow for better separation, similar to original floating style
-       ...Platform.select({
+      paddingBottom: Platform.OS === 'ios' ? 30 : 16,
+      backgroundColor: colors.background,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      ...Platform.select({
         ios: {
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -570,14 +564,13 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
         },
       }),
     },
-    loggedInBottomRow: { // Container for buttons
+    loggedInBottomRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12, // Keep gap between buttons
+      gap: 12,
     },
-    // Removed bottomQuantitySelector style
     buttonWrapper: {
-      flex: 1, // Make buttons share space
+      flex: 1,
     },
     cartButton: {
       borderRadius: 30,
@@ -593,6 +586,4 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       paddingHorizontal: 10,
       backgroundColor: colors.text,
     },
-     // Removed unused styles: buttonCartIcon, buttonSeparatorText, buttonPriceText, buttonMrpTextInButton
   });
-}; // Corrected closing brace
