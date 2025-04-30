@@ -172,16 +172,18 @@ export function CategoryProductGrid({ data, containerWidth }: CategoryProductGri
               disabled={addingToCart}
               style={styles.addToCartButton}
               size="sm"
-              leftIcon={!addingToCart ? <ShoppingCart size={14} color={colors.background} /> : undefined}
+              leftIcon={!addingToCart ? <ShoppingCart size={12} color={colors.background} /> : undefined}
             >
-              {addingToCart 
-                ? '...' 
-                : ITEM_WIDTH < 130 
-                  ? 'Add'
-                  : ITEM_WIDTH < 160 
-                    ? 'Add Cart'
-                    : 'Add to Cart'
-              }
+              <View style={styles.buttonContent}>
+                <ThemedText 
+                  style={[
+                    styles.buttonText,
+                    { fontSize: ITEM_WIDTH < 130 ? 10 : ITEM_WIDTH < 160 ? 11 : 12 }
+                  ]}
+                >
+                  {addingToCart ? '...' : 'Add to Cart'}
+                </ThemedText>
+              </View>
             </Button>
           </View>
         </Pressable>
@@ -194,33 +196,37 @@ export function CategoryProductGrid({ data, containerWidth }: CategoryProductGri
   ), []);
 
   return (
-    <ThemedView style={styles.container}>
-      <FlatList
-        data={data}
-        renderItem={renderItemCallback}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={columns}
-        key={columns}
-        scrollEnabled={true}
-        contentContainerStyle={[
-          styles.listContentContainer,
-          { flexGrow: data.length > 0 ? 1 : 0 }
-        ]}
-        columnWrapperStyle={styles.columnWrapper}
-        ListEmptyComponent={
+    <FlatList
+      data={data}
+      renderItem={renderItemCallback}
+      keyExtractor={(item) => item.id.toString()}
+      numColumns={columns}
+      key={columns}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={[
+        styles.listContentContainer,
+        { flexGrow: data.length > 0 ? 1 : 0 }
+      ]}
+      columnWrapperStyle={styles.columnWrapper}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
           <ThemedText style={styles.emptyText}>No products found.</ThemedText>
-        }
-      />
-    </ThemedView>
+        </View>
+      }
+    />
   );
 }
 
 const createStyles = (colors: typeof Colors.light, itemWidth: number, spacing: number) => StyleSheet.create({
-  container: {
-    padding: spacing,
-  },
   listContentContainer: {
-    paddingVertical: spacing,
+    padding: spacing,
+    paddingBottom: 100,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 40,
   },
   columnWrapper: {
     gap: spacing * 2, // Double spacing between horizontal items
@@ -306,5 +312,20 @@ const createStyles = (colors: typeof Colors.light, itemWidth: number, spacing: n
   addToCartButton: {
     marginTop: spacing / 2,
     height: 32,
+    paddingHorizontal: 6,
+  },
+  buttonContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: colors.background,
+    fontWeight: '600',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    lineHeight: Platform.OS === 'ios' ? 0 : 14,
+    includeFontPadding: false,
   },
 });

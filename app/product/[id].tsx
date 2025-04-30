@@ -1,5 +1,5 @@
   import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text, Image } from 'react-native';
+import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text, Image, TextInput } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import RenderHTML from 'react-native-render-html';
@@ -41,6 +41,8 @@ export default function ProductScreen() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
+  const [pincode, setPincode] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
 
   // Product fetching and variant processing
   useEffect(() => {
@@ -102,6 +104,21 @@ export default function ProductScreen() {
       setSelectedVariant(matchingVariant);
     }
   }, [selectedColor, selectedSize, product?.variants]);
+
+  // Calculate delivery date (simple logic: current date + 5 days)
+  useEffect(() => {
+    const calculateDeliveryDate = () => {
+      const today = new Date();
+      const delivery = new Date(today);
+      delivery.setDate(today.getDate() + 5);
+      
+      const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+      setDeliveryDate(delivery.toLocaleDateString('en-US', options));
+    };
+    
+    // Calculate initially and whenever pincode changes (though logic is static here)
+    calculateDeliveryDate();
+  }, [pincode]); // Re-calculate if pincode changes, even if logic is static for now
 
   // Wishlist status check
   useEffect(() => {
@@ -431,6 +448,40 @@ export default function ProductScreen() {
               </View>
              )}
 
+            {/* Pincode / Delivery Section */}
+            <View style={styles.section}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Check Delivery</ThemedText>
+              <View style={styles.pincodeContainer}>
+                <TextInput
+                  style={[styles.pincodeInput, { borderColor: colors.border, color: colors.text }]}
+                  placeholder="Enter Pincode"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="numeric"
+                  maxLength={6}
+                  value={pincode}
+                  onChangeText={setPincode}
+                />
+                <Button 
+                  size="sm" 
+                  style={styles.pincodeButton}
+                  disabled={pincode.length !== 6} // Basic validation
+                  onPress={() => { /* Trigger recalculation or API call if needed */ }}
+                >
+                  Check
+                </Button>
+              </View>
+              {deliveryDate && pincode.length === 6 && (
+                <ThemedText style={[styles.deliveryText, { color: colors.success }]}>
+                  Estimated delivery by {deliveryDate}
+                </ThemedText>
+              )}
+               {pincode.length > 0 && pincode.length < 6 && (
+                 <ThemedText style={[styles.deliveryText, { color: colors.error }]}>
+                   Enter a valid 6-digit pincode
+                 </ThemedText>
+               )}
+            </View>
+
             {/* Recommendations Section */}
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>Recommended Products</ThemedText>
@@ -708,5 +759,28 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       width: '100%',
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    pincodeContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 10,
+    },
+    pincodeInput: {
+      flex: 1,
+      height: 44,
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      fontSize: 16,
+    },
+    pincodeButton: {
+      height: 44,
+      paddingHorizontal: 15,
+    },
+    deliveryText: {
+      marginTop: 8,
+      fontSize: 14,
+      fontWeight: '500',
     },
   });

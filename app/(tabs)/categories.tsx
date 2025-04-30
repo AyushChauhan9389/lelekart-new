@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
+import { View, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Dimensions, Image } from 'react-native';
+import { Star } from 'lucide-react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { CategoryProductGrid } from '@/components/home/CategoryProductGrid';
@@ -30,6 +31,7 @@ export default function CategoriesScreen() {
     id: 0,
     name: 'All',
     slug: 'all',
+    image: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png', // Solid star icon for "All" category
   };
   const [categories, setCategories] = useState<Category[]>([allCategory]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -84,12 +86,24 @@ export default function CategoriesScreen() {
       ]}
       onPress={() => setSelectedCategory(item)}
     >
-      <ThemedText style={[
-        styles.categoryText,
-        selectedCategory?.id === item.id ? styles.categoryTextSelected : { color: colors.text }
-      ]}>
-        {item.name}
-      </ThemedText>
+      <View style={styles.categoryContent}>
+        <Image 
+          source={{ uri: item.id === 0 ? item.image : (item.image || item.imageUrl || '') }}
+          style={[
+            styles.categoryIcon,
+            { opacity: selectedCategory?.id === item.id ? 1 : 0.6 }
+          ]}
+        />
+        <ThemedText 
+          numberOfLines={1} 
+          style={[
+            styles.categoryText,
+            selectedCategory?.id === item.id ? styles.categoryTextSelected : { color: colors.text }
+          ]}
+        >
+          {item.name}
+        </ThemedText>
+      </View>
     </TouchableOpacity>
   );
 
@@ -112,24 +126,18 @@ export default function CategoriesScreen() {
           </View>
 
           {/* Right Panel: Products Grid */}
-          <ScrollView 
-            style={styles.productsPanel}
-            contentContainerStyle={styles.productsPanelContent}
-            showsVerticalScrollIndicator={false}
-          >
+          <View style={styles.productsPanel}>
             {isLoadingProducts ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : (
-              <View style={styles.productGridContainer}>
-                <CategoryProductGrid 
-                  data={products} 
-                  containerWidth={WINDOW_WIDTH - (isTabletOrLarger ? 200 : 120)}
-                />
-              </View>
+              <CategoryProductGrid 
+                data={products} 
+                containerWidth={WINDOW_WIDTH - (isTabletOrLarger ? 200 : 120)}
+              />
             )}
-          </ScrollView>
+          </View>
         </View>
       )}
     </ThemedView>
@@ -155,19 +163,29 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
     backgroundColor: colors.card,
   },
   categoryItem: {
-    paddingVertical: 15,
-    paddingHorizontal: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  categoryContent: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
   },
   categoryItemSelected: {
     backgroundColor: colors.background,
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
-    paddingLeft: 9,
   },
   categoryText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
+    textAlign: 'center',
   },
   categoryTextSelected: {
     color: colors.primary,
@@ -179,7 +197,7 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
   },
   productsPanelContent: {
     flexGrow: 1,
-    paddingBottom: 100, // Add padding for bottom navigation
+    paddingBottom: 100,
   },
   productGridContainer: {
     flex: 1,

@@ -125,8 +125,13 @@ export interface Category {
   id: number;
   name: string;
   slug: string;
+  image?: string;
   imageUrl?: string;
   parentId?: number | null;
+  displayOrder?: number;
+  gstRate?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FeaturedHeroProduct {
