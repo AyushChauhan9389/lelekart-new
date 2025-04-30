@@ -131,7 +131,7 @@ export const api = {
       }),
   },
   products: {
-    getById: (id: string) => fetchApi<Product>(`/api/products/${id}`),
+    getById: (id: string) => fetchApi<StoredProduct>(`/api/products/${id}?variants=true`),
     getByCategory: (categoryName: string, page = 1, limit = 16) =>
       fetchApi<PaginatedResponse<Product>>(
         `/api/products?category=${encodeURIComponent(categoryName)}&page=${page}&limit=${limit}`

@@ -61,8 +61,27 @@ export interface VerifyOTPResponse {
   user: User;
 }
 
+export interface ProductVariant {
+  id: number;
+  productId: number;
+  sku: string;
+  color: string;
+  size: string;
+  price: number;
+  mrp: number;
+  stock: number;
+  images: string;
+  createdAt: string;
+  gstDetails: {
+    gstRate: number;
+    basePrice: number;
+    gstAmount: number;
+    priceWithGst: number;
+  };
+}
+
 export interface StoredProduct extends Product {
-  variants?: any[];
+  variants?: ProductVariant[];
   gstDetails?: {
     gstRate: number;
     basePrice: number;
@@ -86,6 +105,86 @@ export interface Address {
   state: string;
   pincode: string;
   isDefault?: boolean;
+}
+
+export interface APIResponse<T = any> {
+  data: T;
+  success: boolean;
+  message?: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  imageUrl?: string;
+  parentId?: number | null;
+}
+
+export interface FeaturedHeroProduct {
+  id: number;
+  title: string;
+  description: string;
+  imageUrl: string;
+  link: string;
+}
+
+export interface RequestOTPResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface NotificationPreferences {
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+}
+
+export interface UserProfile {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface Order {
+  id: number;
+  userId: number;
+  total: number;
+  status: string;
+  paymentMethod: string;
+  paymentId?: string;
+  orderId?: string;
+  shippingDetails: string;
+  items: CartItem[];
+  createdAt: string;
+}
+
+export interface Wallet {
+  id: number;
+  userId: number;
+  balance: number;
+  coins: number;
+}
+
+export interface PaymentResponse {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+}
+
+export interface PaymentVerificationResponse {
+  success: boolean;
+  message: string;
+  orderId?: string;
 }
 
 export interface CreateOrderRequest {

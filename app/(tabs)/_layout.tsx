@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import React from 'react';
 import { Platform, ActivityIndicator } from 'react-native';
-import { Home, Compass, ShoppingCart, Heart, User, Package } from 'lucide-react-native'; // Add Package
+import { Home, Compass, ShoppingCart, Heart, User, Package, LayoutGrid } from 'lucide-react-native'; // Add Package and LayoutGrid
 import { api } from '@/utils/api';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
@@ -67,6 +67,14 @@ export default function TabLayout() {
           title: 'Explore',
           headerShown: true, // Explicitly show header for this tab
           tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />, // Use Lucide Compass
+        }}
+      />
+      <Tabs.Screen
+        name="categories" // New tab name
+        options={{
+          title: 'Categories',
+          headerShown: true, // Show header
+          tabBarIcon: ({ color, size }) => <LayoutGrid size={size} color={color} />, // Use Lucide LayoutGrid
         }}
       />
       <Tabs.Screen

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text } from 'react-native';
+  import React, { useState, useEffect, useMemo } from 'react';
+import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text, Image } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import RenderHTML from 'react-native-render-html';
@@ -12,8 +12,9 @@ import { Button } from '@/components/ui/Button';
 import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Zap } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import type { Product } from '@/types/api';
+import type { Product, ProductVariant, StoredProduct } from '@/types/api';
 import { api } from '@/utils/api';
+import { RecommendationCard } from '@/components/product/RecommendationCard';
 
 export default function ProductScreen() {
   // Route params
@@ -29,15 +30,19 @@ export default function ProductScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
   
   // State
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<StoredProduct | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [updatingWishlist, setUpdatingWishlist] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [uniqueColors, setUniqueColors] = useState<string[]>([]);
+  const [uniqueSizes, setUniqueSizes] = useState<string[]>([]);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<Product[]>([]);
 
-  // Product fetching
+  // Product fetching and variant processing
   useEffect(() => {
     const fetchProduct = async () => {
       if (!id) {
@@ -47,6 +52,33 @@ export default function ProductScreen() {
       try {
         const data = await api.products.getById(id);
         setProduct(data);
+        
+        // Process variants
+        if (data.variants && data.variants.length > 0) {
+          // Extract unique colors and sizes from variants
+          const colors = new Set<string>();
+          const sizes = new Set<string>();
+          
+          data.variants.forEach((variant: ProductVariant) => {
+            if (variant.color) {
+              colors.add(variant.color);
+            }
+            if (variant.size) {
+              variant.size.split(',').forEach((size: string) => {
+                const trimmedSize = size.trim();
+                if (trimmedSize) {
+                  sizes.add(trimmedSize);
+                }
+              });
+            }
+          });
+          
+          setUniqueColors(Array.from(colors));
+          setUniqueSizes(Array.from(sizes));
+          
+          // Set default variant if available
+          setSelectedVariant(data.variants[0]);
+        }
       } catch (error) {
         console.error('Error fetching product:', error);
       } finally {
@@ -56,6 +88,20 @@ export default function ProductScreen() {
 
     fetchProduct();
   }, [id]);
+
+  // Handle variant selection
+  useEffect(() => {
+    if (!product?.variants || !selectedColor || !selectedSize) return;
+
+    const matchingVariant = product.variants.find(variant => 
+      variant.color === selectedColor && 
+      variant.size.split(',').map(s => s.trim()).includes(selectedSize)
+    );
+
+    if (matchingVariant) {
+      setSelectedVariant(matchingVariant);
+    }
+  }, [selectedColor, selectedSize, product?.variants]);
 
   // Wishlist status check
   useEffect(() => {
@@ -89,6 +135,21 @@ export default function ProductScreen() {
     checkWishlistStatus();
     return () => { isMounted = false; };
   }, [user, product]);
+
+  // Fetch recommendations
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const response = await fetch('https://lelekart.in/api/recommendations');
+        const data = await response.json();
+        setRecommendations(data);
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+      }
+    };
+
+    fetchRecommendations();
+  }, []);
 
   // Image processing
   const { mainImage, carouselImages } = useMemo(() => {
@@ -126,12 +187,14 @@ export default function ProductScreen() {
 
   // Action handlers
   const handleAddToCart = async () => {
-    if (!product || addingToCart) return;
+    if (!product || addingToCart || !selectedVariant) return;
     setAddingToCart(true);
     try {
       if (user) {
+        // TODO: Update API to handle variant ID
         await api.cart.addItem(product.id, 1);
       } else {
+        // TODO: Update storage to handle variant
         await storage.cart.addItem(product, 1);
       }
       Toast.show({
@@ -154,13 +217,14 @@ export default function ProductScreen() {
   };
 
   const handleBuyNow = async () => {
-    if (!product) return;
+    if (!product || !selectedVariant) return;
     if (!user) {
       router.push('/(auth)/login');
       return;
     }
 
     try {
+      // TODO: Update API to handle variant ID
       await api.cart.addItem(product.id, 1);
       router.push('/checkout');
     } catch (error) {
@@ -280,11 +344,11 @@ export default function ProductScreen() {
            {/* Price Row */}
            <View style={styles.priceRow}>
              <ThemedText type="subtitle" style={styles.price}>
-               ₹{product.price}
+               ₹{selectedVariant?.price || product.price}
              </ThemedText>
-             {product.mrp > product.price && (
-                <ThemedText style={styles.mrp}>₹{product.mrp}</ThemedText>
-              )}
+             {(selectedVariant?.mrp || product.mrp) > (selectedVariant?.price || product.price) && (
+                <ThemedText style={styles.mrp}>₹{selectedVariant?.mrp || product.mrp}</ThemedText>
+             )}
            </View>
 
            {/* Description */}
@@ -295,11 +359,11 @@ export default function ProductScreen() {
            </View>
 
            {/* Size Selector */}
-           {product.availableSizes && product.availableSizes.length > 0 && (
+           {uniqueSizes.length > 0 && (
              <View style={styles.section}>
                <ThemedText type="subtitle" style={styles.sectionTitle}>Choose Size</ThemedText>
                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
-                 {product.availableSizes.map((size: string) => (
+                 {uniqueSizes.map((size: string) => (
                    <TouchableOpacity
                      key={size}
                      style={[
@@ -321,11 +385,11 @@ export default function ProductScreen() {
            )}
 
            {/* Color Selector */}
-           {product.availableColors && product.availableColors.length > 0 && (
+           {uniqueColors.length > 0 && (
              <View style={styles.section}>
                <ThemedText type="subtitle" style={styles.sectionTitle}>Color</ThemedText>
                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
-                 {product.availableColors.map((color: string) => (
+                 {uniqueColors.map((color: string) => (
                    <TouchableOpacity
                      key={color}
                      style={[
@@ -340,6 +404,20 @@ export default function ProductScreen() {
              </View>
             )}
 
+           {/* Variant Details */}
+           {selectedVariant && (
+             <View style={styles.section}>
+               <View style={[styles.variantDetails, { backgroundColor: colors.card }]}>
+                 <ThemedText style={[styles.variantText, { color: colors.textSecondary }]}>
+                   Stock: {selectedVariant.stock} units
+                 </ThemedText>
+                 <ThemedText style={[styles.variantText, { color: colors.textSecondary }]}>
+                   SKU: {selectedVariant.sku}
+                 </ThemedText>
+               </View>
+             </View>
+           )}
+
             {/* Specifications */}
             {product.specifications && (
               <View style={styles.section}>
@@ -352,6 +430,31 @@ export default function ProductScreen() {
                 />
               </View>
              )}
+
+            {/* Recommendations Section */}
+            <View style={styles.section}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Recommended Products</ThemedText>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.recommendationsContainer}
+              >
+                {recommendations.length === 0 ? (
+                  <View style={styles.recommendationsLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  </View>
+                ) : (
+                  recommendations.map((item) => (
+                    <RecommendationCard
+                      key={item.id}
+                      item={item}
+                      colors={colors}
+                      currentId={id}
+                    />
+                  ))
+                )}
+              </ScrollView>
+            </View>
         </View>
       </ScrollView>
 
@@ -363,7 +466,7 @@ export default function ProductScreen() {
               onPress={handleAddToCart}
               style={styles.cartButton}
               variant="outline"
-              disabled={addingToCart}
+              disabled={addingToCart || !selectedVariant}
               textStyle={{ color: colors.text }}
               leftIcon={<ShoppingCart size={20} color={colors.text} />}
             >
@@ -375,6 +478,7 @@ export default function ProductScreen() {
               <Button
                 onPress={handleBuyNow}
                 style={styles.buyButton}
+                disabled={!selectedVariant}
                 leftIcon={<Zap size={20} color={colors.background} />}
               >
                 Buy Now
@@ -542,6 +646,15 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       borderColor: colors.primary,
       borderWidth: 3,
     },
+    variantDetails: {
+      padding: 12,
+      borderRadius: 8,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    variantText: {
+      fontSize: 14,
+    },
     bottomButtonContainer: {
       position: 'absolute',
       bottom: 0,
@@ -585,5 +698,15 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       height: 50,
       paddingHorizontal: 10,
       backgroundColor: colors.text,
+    },
+    recommendationsContainer: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    recommendationsLoading: {
+      height: 200,
+      width: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

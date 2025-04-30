@@ -301,8 +301,7 @@ export default function CartScreen() {
         </View>
         <Button 
           fullWidth 
-          disabled={!user}
-          onPress={() => router.push('/checkout')}>
+          onPress={() => router.push(user ? '/checkout' : '/(auth)/login')}>
           {user ? 'Continue to Checkout' : 'Login to Checkout'}
         </Button>
       </View>
