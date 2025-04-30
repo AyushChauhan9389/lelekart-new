@@ -406,16 +406,22 @@ export default function ProductScreen() {
              <View style={styles.section}>
                <ThemedText type="subtitle" style={styles.sectionTitle}>Color</ThemedText>
                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
-                 {uniqueColors.map((color: string) => (
+                 {uniqueColors.map((size: string) => (
                    <TouchableOpacity
-                     key={color}
+                     key={size}
                      style={[
-                       styles.colorSelectorButton,
-                       selectedColor === color ? styles.colorSelectorButtonSelected : {},
-                       { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : colors.border }
+                       styles.selectorButton,
+                       selectedSize === size ? styles.selectorButtonSelected : {},
+                       { borderColor: colors.border, backgroundColor: selectedSize === size ? colors.text : colors.background }
                      ]}
-                     onPress={() => setSelectedColor(color)}
-                   />
+                     onPress={() => setSelectedSize(size)}
+                   >
+                     <ThemedText style={[
+                       styles.selectorButtonText,
+                       selectedSize === size ? styles.selectorButtonTextSelected : {},
+                       { color: selectedSize === size ? colors.background : colors.text }
+                     ]}>{size}</ThemedText>
+                   </TouchableOpacity>
                  ))}
                </ScrollView>
              </View>
