@@ -84,6 +84,15 @@ function RootLayoutNav() {
             headerTintColor: Colors[colorScheme ?? 'light'].primary,
           }}
         />
+        <Stack.Screen
+          name="wallet" // Add wallet screen
+          options={{
+            headerShown: true, // Show header for wallet
+            title: 'My Wallet', // Set title here
+            headerTintColor: Colors[colorScheme ?? 'light'].primary,
+            headerBackButtonDisplayMode: 'minimal' // Correct property name
+          }}
+        />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </ThemeProvider>

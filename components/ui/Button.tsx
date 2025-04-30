@@ -7,7 +7,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
-interface ButtonProps {
+export interface ButtonProps {
   onPress: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;

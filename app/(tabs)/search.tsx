@@ -22,7 +22,7 @@ import Animated, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ProductGrid } from '@/components/home/ProductGrid';
+import { SearchProductGrid } from '@/components/search/SearchProductGrid'; // Import the new component
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import Colors from '@/constants/Colors';
@@ -207,7 +207,8 @@ export default function SearchScreen() {
             entering={FadeIn.duration(300)} 
             layout={Layout.springify()}
           >
-            <ProductGrid data={searchResults} />
+            {/* Use SearchProductGrid and pass the calculated content width */}
+            <SearchProductGrid data={searchResults} containerWidth={CONTENT_WIDTH} />
           </Animated.View>
         ) : searchQuery ? (
           <Animated.View 
@@ -255,6 +256,7 @@ export default function SearchScreen() {
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 const SPACING = WINDOW_WIDTH < 380 ? 12 : 16;
+const CONTENT_WIDTH = WINDOW_WIDTH - SPACING * 2; // Define CONTENT_WIDTH
 
 const styles = StyleSheet.create({
   container: {

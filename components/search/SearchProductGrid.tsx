@@ -7,61 +7,51 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Heart, ShoppingCart } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/Button'; // Import Button
+import { Button } from '@/components/ui/Button';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
-import { api } from '@/utils/api'; // Import api
+import { api } from '@/utils/api';
 
-interface ProductGridProps {
+// Interface specifically for SearchProductGrid
+interface SearchProductGridProps {
   data: Product[];
-  // Removed containerWidth prop
+  containerWidth: number; // containerWidth is required here
 }
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
-// Dynamic column count based on screen width (original logic)
-const getColumnCount = () => {
-  if (WINDOW_WIDTH >= 1024) return 4; // Large tablets/desktop
-  if (WINDOW_WIDTH >= 768) return 3;  // Tablets
-  return 2; // Phones
+
+// Dynamic column count based on available width
+const getColumnCount = (width: number) => {
+  if (width >= 1024) return 4;
+  if (width >= 768) return 3;
+  return 2;
 };
 
-const SPACING = 12;
-const COLUMN_COUNT = getColumnCount();
-// ITEM_WIDTH calculation based on WINDOW_WIDTH (original logic)
-const ITEM_WIDTH = (WINDOW_WIDTH - SPACING * (COLUMN_COUNT + 1)) / COLUMN_COUNT;
+const SPACING = 12; // Use the original spacing for search results
 
-export function ProductGrid({ data }: ProductGridProps) {
-  const [columns, setColumns] = React.useState(COLUMN_COUNT);
+// Renamed component
+export function SearchProductGrid({ data, containerWidth }: SearchProductGridProps) {
+  const effectiveWidth = containerWidth; // Use the passed containerWidth directly
 
-  // Original dimension change listener
+  const [columns, setColumns] = React.useState(getColumnCount(effectiveWidth));
+
   React.useEffect(() => {
-    const dimensionsHandler = Dimensions.addEventListener('change', () => {
-      const { width } = Dimensions.get('window');
-      if (width >= 1024) setColumns(4);
-      else if (width >= 768) setColumns(3);
-      else setColumns(2);
-    });
+    setColumns(getColumnCount(effectiveWidth));
+  }, [effectiveWidth]);
 
-    return () => {
-      dimensionsHandler.remove();
-    };
-  }, []);
-
+  const ITEM_WIDTH = (effectiveWidth - SPACING * (columns + 1)) / columns;
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  // Generate styles dynamically based on colors (original signature)
-  const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
-  const { user } = useAuth(); // Get user auth state
+  const styles = useMemo(() => createStyles(colors, colorScheme, ITEM_WIDTH, SPACING, effectiveWidth), [colors, colorScheme, ITEM_WIDTH, effectiveWidth]);
+  const { user } = useAuth();
 
-  // -- Render Item Component with State and Handlers --
   const ProductGridItem = ({ item, styles, colors }: { item: Product, styles: any, colors: any }) => {
     const [isInWishlist, setIsInWishlist] = useState(false);
     const [updatingWishlist, setUpdatingWishlist] = useState(false);
     const [addingToCart, setAddingToCart] = useState(false);
 
-    // Check wishlist status (same logic)
     useEffect(() => {
       let isMounted = true;
       const checkStatus = async () => {
@@ -88,40 +78,38 @@ export function ProductGrid({ data }: ProductGridProps) {
       return () => { isMounted = false; };
     }, [user, item]);
 
-    // handleWishlistToggle (same logic)
     const handleWishlistToggle = async () => {
-      if (!item || updatingWishlist) return;
-      setUpdatingWishlist(true);
-      try {
-        let message = '';
-        if (user) {
-          if (isInWishlist) {
-            await api.wishlist.removeItem(item.id);
-            message = 'Removed from Wishlist';
-          } else {
-            await api.wishlist.addItem(item.id);
-            message = 'Added to Wishlist';
-          }
-        } else {
-          if (isInWishlist) {
-            await storage.wishlist.removeItem(item.id);
-            message = 'Removed from Wishlist';
-          } else {
-            await storage.wishlist.addItem(item);
-            message = 'Added to Wishlist';
-          }
-        }
-        setIsInWishlist(!isInWishlist);
-        Toast.show({ type: 'success', text1: message, position: 'bottom' });
-      } catch (error) {
-        console.error('Failed to update wishlist:', error);
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update wishlist.', position: 'bottom' });
-      } finally {
-        setUpdatingWishlist(false);
-      }
+       if (!item || updatingWishlist) return;
+       setUpdatingWishlist(true);
+       try {
+         let message = '';
+         if (user) {
+           if (isInWishlist) {
+             await api.wishlist.removeItem(item.id);
+             message = 'Removed from Wishlist';
+           } else {
+             await api.wishlist.addItem(item.id);
+             message = 'Added to Wishlist';
+           }
+         } else {
+           if (isInWishlist) {
+             await storage.wishlist.removeItem(item.id);
+             message = 'Removed from Wishlist';
+           } else {
+             await storage.wishlist.addItem(item);
+             message = 'Added to Wishlist';
+           }
+         }
+         setIsInWishlist(!isInWishlist);
+         Toast.show({ type: 'success', text1: message, position: 'bottom' });
+       } catch (error) {
+         console.error('Failed to update wishlist:', error);
+         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update wishlist.', position: 'bottom' });
+       } finally {
+         setUpdatingWishlist(false);
+       }
     };
 
-    // handleAddToCart (same logic)
     const handleAddToCart = async () => {
       if (!item || addingToCart) return;
       setAddingToCart(true);
@@ -198,48 +186,42 @@ export function ProductGrid({ data }: ProductGridProps) {
       </View>
     );
   };
-  // -- End Render Item Component --
 
   const renderItemCallback = useCallback(({ item }: { item: Product }) => (
     <ProductGridItem item={item} styles={styles} colors={colors} />
   ), [styles, colors]);
 
   return (
-    // Remove ThemedView wrapper or remove padding from its style
+    // Use FlatList directly for scrollable grid
     <FlatList
-      style={styles.container} // Apply container style here if needed (e.g., background)
       data={data}
       renderItem={renderItemCallback}
       keyExtractor={(item) => item.id.toString()}
       numColumns={columns}
       key={columns}
-      scrollEnabled={false} // Original setting
-      contentContainerStyle={styles.listContentContainer} // Padding adjusted
-      columnWrapperStyle={styles.columnWrapper} // Re-add columnWrapperStyle
-        ListEmptyComponent={
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.listContentContainer}
+      columnWrapperStyle={styles.columnWrapper}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
           <ThemedText style={styles.emptyText}>No products found.</ThemedText>
-        }
-      />
+        </View>
+      }
+    />
   );
 }
 
-// Original StyleSheet creation function signature
-const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null) => StyleSheet.create({
-  container: {
-    // Style for FlatList itself if needed (e.g., backgroundColor: colors.background)
-    flex: 1, // Ensure FlatList takes available space if wrapped
-  },
+const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark' | null, itemWidth: number, spacing: number, effectiveWidth: number) => StyleSheet.create({
   listContentContainer: {
-    paddingHorizontal: SPACING, // Restore outer padding
-    paddingVertical: SPACING,
+    padding: spacing, // Add padding here
+    paddingBottom: 100, // Ensure space at bottom
   },
   columnWrapper: {
-    justifyContent: 'center', // Center the items in each row
-    gap: SPACING, // Add consistent gap between items
+    justifyContent: 'space-between',
+    marginBottom: spacing,
   },
-  itemOuterContainer: { // Original style using ITEM_WIDTH
-    width: ITEM_WIDTH,
-    marginBottom: SPACING, // Vertical spacing between rows
+  itemOuterContainer: {
+    width: itemWidth,
   },
   item: {
     flex: 1,
@@ -275,7 +257,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     top: 6,
     right: 6,
   },
-  cartButton: { // Original style
+  cartButton: {
     bottom: 6,
     right: 6,
     backgroundColor: colors.background,
@@ -283,12 +265,12 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     borderWidth: 1,
   },
   content: {
-    padding: SPACING * 0.75, // Original padding
+    padding: spacing * 0.75,
     backgroundColor: colors.card,
   },
   name: {
-    fontSize: WINDOW_WIDTH < 380 ? 13 : 14, // Original font size check
-    marginBottom: SPACING / 4,
+    fontSize: effectiveWidth < 380 ? 13 : 14,
+    marginBottom: spacing / 4,
     lineHeight: 20,
     minHeight: 40,
     opacity: 0.9,
@@ -296,33 +278,38 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: SPACING / 2,
-    marginTop: SPACING / 4,
+    gap: spacing / 2,
+    marginTop: spacing / 4,
     flexWrap: 'wrap',
-    marginBottom: SPACING * 0.5,
+    marginBottom: spacing * 0.5,
   },
   price: {
-    fontSize: WINDOW_WIDTH < 380 ? 16 : 18, // Original font size check
+    fontSize: effectiveWidth < 380 ? 16 : 18,
     fontWeight: '700',
     color: colors.primary,
   },
   mrp: {
-    fontSize: WINDOW_WIDTH < 380 ? 12 : 13, // Original font size check
+    fontSize: effectiveWidth < 380 ? 12 : 13,
     textDecorationLine: 'line-through',
     opacity: 0.5,
   },
   discount: {
-    fontSize: WINDOW_WIDTH < 380 ? 11 : 12, // Original font size check
+    fontSize: effectiveWidth < 380 ? 11 : 12,
     color: colors.success,
     fontWeight: '600',
   },
+  emptyContainer: { // Style for empty state
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
   emptyText: {
     textAlign: 'center',
-    marginTop: 20,
     fontSize: 16,
     opacity: 0.7,
   },
   addToCartButton: {
-    marginTop: SPACING * 0.75, // Original margin
+    marginTop: spacing * 0.75,
   },
 });

@@ -1,9 +1,9 @@
-import type { 
-  APIResponse, 
+import type {
+  APIResponse,
   CartItem,
-  Category, 
-  FeaturedHeroProduct, 
-  PaginatedResponse, 
+  Category,
+  FeaturedHeroProduct,
+  PaginatedResponse,
   Product,
   RequestOTPResponse,
   VerifyOTPResponse,
@@ -12,10 +12,16 @@ import type {
   WishlistItem,
   Address,
   Wallet,
+  WalletTransaction, // Added
+  WalletSettings, // Added
   PaymentResponse,
   PaymentVerificationResponse,
   NotificationPreferences,
-  UserProfile
+  UserProfile,
+  StoredProduct,
+  ProductRatingResponse,
+  Review,
+  CreateReviewPayload
 } from '@/types/api';
 
 const API_BASE_URL = 'https://lelekart.in';
@@ -35,7 +41,7 @@ export async function fetchApi<T>(
     headers: finalHeaders,
     credentials: 'include',
   });
-  
+
   const responseHeaders: { [key: string]: string } = {};
   response.headers.forEach((value: string, key: string) => {
     responseHeaders[key] = value;
@@ -113,7 +119,7 @@ export const api = {
     getCategories: () => fetchApi<Category[]>('/api/categories'),
   },
   cart: {
-    getItems: () => 
+    getItems: () =>
       fetchApi<CartItem[]>('/api/cart'),
     addItem: (productId: number, quantity: number = 1) =>
       fetchApi<CartItem>('/api/cart', {
@@ -133,13 +139,22 @@ export const api = {
   products: {
     getById: (id: string) => fetchApi<StoredProduct>(`/api/products/${id}?variants=true`),
     getByCategory: (categoryName: string, page = 1, limit = 16) =>
-      fetchApi<PaginatedResponse<Product>>(
+      fetchApi<PaginatedResponse<Product>>( // Keep this type for now, handle response structure in component
         `/api/products?category=${encodeURIComponent(categoryName)}&page=${page}&limit=${limit}`
       ),
     getAll: (page = 1, limit = 16) =>
-      fetchApi<PaginatedResponse<Product>>(`/api/products?page=${page}&limit=${limit}`),
-    search: (query: string) => 
+      fetchApi<PaginatedResponse<Product>>(`/api/products?page=${page}&limit=${limit}`), // Keep this type for now
+    search: (query: string) =>
       fetchApi<PaginatedResponse<Product>>(`/api/search?q=${encodeURIComponent(query)}`),
+    getRating: (productId: string) =>
+      fetchApi<ProductRatingResponse>(`/api/products/${productId}/rating`),
+    getReviews: (productId: string) =>
+      fetchApi<Review[]>(`/api/products/${productId}/reviews`),
+    createReview: (productId: string, data: CreateReviewPayload) =>
+      fetchApi<Review>(`/api/products/${productId}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
   orders: {
     getOrders: async () => {
@@ -152,7 +167,7 @@ export const api = {
             total: response?.length || 0
         };
     },
-    getOrderById: (id: number | string) => 
+    getOrderById: (id: number | string) =>
       fetchApi<Order>(`/api/orders/${id}`),
     create: (data: {
       userId: number;
@@ -162,7 +177,7 @@ export const api = {
       paymentId?: string | null;
       orderId?: string | null;
       shippingDetails: string;
-    }) => 
+    }) =>
       fetchApi<Order>('/api/orders', {
         method: 'POST',
         body: JSON.stringify(data)
@@ -198,7 +213,7 @@ export const api = {
       fetchApi<{ inWishlist: boolean }>(`/api/wishlist/check/${productId}`),
   },
   addresses: {
-    getAll: () => 
+    getAll: () =>
       fetchApi<Address[]>('/api/addresses'),
     add: (address: Omit<Address, 'id' | 'userId'>) =>
       fetchApi<Address>('/api/addresses', {
@@ -220,8 +235,12 @@ export const api = {
       }),
   },
   wallet: {
-    getDetails: () => 
-      fetchApi<Wallet>('/api/wallet'),
+    getDetails: () =>
+      fetchApi<Wallet>('/api/wallet'), // Existing getDetails
+    getTransactions: () =>
+      fetchApi<{ transactions: WalletTransaction[]; total: number }>('/api/wallet/transactions'),
+    getSettings: () =>
+      fetchApi<WalletSettings>('/api/wallet/settings'),
     validateRedemption: (amount: number, coinsToUse: number, categories: string[]) =>
       fetchApi<{
         valid: boolean;

@@ -121,6 +121,72 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
+export interface RatingCount {
+  rating: number;
+  count: number;
+}
+
+export interface ProductRatingResponse {
+  averageRating: number;
+  totalReviews: number;
+  ratingCounts: RatingCount[];
+}
+
+export interface Review {
+  id: number;
+  userId: number;
+  productId: number;
+  orderId: number | null;
+  rating: number;
+  review: string;
+  title: string;
+  verifiedPurchase: boolean;
+  status: string;
+  helpfulCount: number;
+  createdAt: string;
+  updatedAt: string;
+  user?: ReviewUser;
+}
+
+export interface ReviewUser {
+  id: number;
+  username: string;
+  name: string;
+  profileImage: string | null;
+}
+
+export interface CreateReviewPayload {
+  productId: number;
+  rating: number;
+  review: string;
+  title: string;
+}
+
+export interface WalletTransaction {
+  id: number;
+  userId: number;
+  type: 'credit' | 'debit';
+  amount: number;
+  description: string;
+  orderId?: number | null;
+  createdAt: string;
+}
+
+export interface WalletSettings {
+  id: number;
+  firstPurchaseCoins: number;
+  coinToCurrencyRatio: string; // Keep as string as per API response
+  minOrderValue: string;
+  maxRedeemableCoins: number;
+  coinExpiryDays: number;
+  maxUsagePercentage: string;
+  minCartValue: string;
+  applicableCategories: string; // Could be parsed if needed
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Category {
   id: number;
   name: string;

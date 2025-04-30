@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
-import { Package, Heart, Settings, LogOut, ChevronRight, MapPin } from 'lucide-react-native';
+import { Package, Heart, Settings, LogOut, ChevronRight, MapPin, Wallet } from 'lucide-react-native'; // Import Wallet icon
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
@@ -44,6 +44,7 @@ export default function ProfileScreen() {
     );
   }
 
+  
   // Show login prompt if user is not logged in
   if (!user) {
     return <LoginPrompt />;
@@ -55,6 +56,7 @@ export default function ProfileScreen() {
       <View style={[styles.optionsContainer, { backgroundColor: colors.surface }]}>
         <ProfileOption icon={Package} label="My Orders" onPress={() => router.push('/orders')} />
         <ProfileOption icon={Heart} label="Wishlist" onPress={() => router.push('/(tabs)/wishlist')} />
+        <ProfileOption icon={Wallet} label="My Wallet" onPress={() => router.push('/wallet')} />
         <ProfileOption icon={MapPin} label="Saved Addresses" onPress={() => router.push('/addresses')} />
         <ProfileOption icon={Settings} label="Account Settings" onPress={() => router.push('/settings/profile')} isLast />
       </View>
