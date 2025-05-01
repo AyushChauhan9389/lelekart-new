@@ -70,9 +70,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="categories" // New tab name
+        name="menu" // New tab name
         options={{
-          title: 'Categories',
+          title: 'Menu',
           headerShown: true, // Show header
           tabBarIcon: ({ color, size }) => <LayoutGrid size={size} color={color} />, // Use Lucide LayoutGrid
         }}
