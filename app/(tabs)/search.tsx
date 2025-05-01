@@ -30,6 +30,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product } from '@/types/api';
 import { api } from '@/utils/api';
+// import Voice from '@react-native-voice/voice'; // Import the library (requires installation)
 
 const RECENT_SEARCHES_KEY = '@recent_searches';
 const MAX_RECENT_SEARCHES = 10;
@@ -40,6 +41,8 @@ export default function SearchScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [isFocused, setIsFocused] = useState(true);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [isListening, setIsListening] = useState(false); // State for listening status
+  const [voiceError, setVoiceError] = useState<string | null>(null); // State for voice errors
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -68,6 +71,84 @@ export default function SearchScreen() {
       damping: 12,
     });
   }, []);
+
+  // --- Voice Recognition Setup (Requires @react-native-voice/voice installation & config) ---
+  // useEffect(() => {
+  //   // --- IMPORTANT ---
+  //   // This code requires installing '@react-native-voice/voice'
+  //   // and configuring native permissions (microphone) for iOS and Android.
+  //   // --- --- --- ---
+  //   if (typeof Voice === 'undefined') {
+  //      console.warn('@react-native-voice/voice is not available. Voice search disabled.');
+  //      return;
+  //   }
+
+  //   const onSpeechStart = (e: any) => {
+  //     console.log('onSpeechStart: ', e);
+  //     setIsListening(true);
+  //     setVoiceError(null);
+  //   };
+  //   const onSpeechEnd = (e: any) => {
+  //     console.log('onSpeechEnd: ', e);
+  //     setIsListening(false);
+  //   };
+  //   const onSpeechError = (e: any) => {
+  //     console.log('onSpeechError: ', e);
+  //     setVoiceError(e.error?.message || 'Unknown voice error');
+  //     setIsListening(false);
+  //   };
+  //   const onSpeechResults = (e: any) => {
+  //     console.log('onSpeechResults: ', e);
+  //     if (e.value && e.value.length > 0) {
+  //       setSearchQuery(e.value[0]); // Update search query with the first result
+  //     }
+  //   };
+
+  //   Voice.onSpeechStart = onSpeechStart;
+  //   Voice.onSpeechEnd = onSpeechEnd;
+  //   Voice.onSpeechError = onSpeechError;
+  //   Voice.onSpeechResults = onSpeechResults;
+
+  //   return () => {
+  //     // Remove listeners and destroy instance on unmount
+  //     Voice.destroy().then(Voice.removeAllListeners).catch(e => console.error("Error destroying voice instance", e));
+  //   };
+  // }, []);
+
+  // const startListening = async () => {
+  //   if (typeof Voice === 'undefined') {
+  //      Toast.show({type: 'error', text1: 'Voice library not available.'});
+  //      return;
+  //   }
+  //   setVoiceError(null);
+  //   try {
+  //     await Voice.start('en-US'); // Start listening
+  //   } catch (e) {
+  //     console.error('Error starting voice recognition:', e);
+  //     setVoiceError('Failed to start listening.');
+  //     Toast.show({type: 'error', text1: 'Could not start voice recognition.'});
+  //   }
+  // };
+
+  // const stopListening = async () => {
+  //    if (typeof Voice === 'undefined') return;
+  //   try {
+  //     await Voice.stop();
+  //     setIsListening(false);
+  //   } catch (e) {
+  //     console.error('Error stopping voice recognition:', e);
+  //   }
+  // };
+
+  // const toggleListening = () => {
+  //   if (isListening) {
+  //     stopListening();
+  //   } else {
+  //     startListening();
+  //   }
+  // };
+  // --- End Voice Recognition Setup ---
+
 
   const searchBarAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: searchBarScale.value }],
@@ -185,12 +266,18 @@ export default function SearchScreen() {
                 </Pressable>
               )}
             </View>
-            {/* Add Mic button */}
+            {/* Mic button - Placeholder for toggleListening */}
             <Pressable 
               style={styles.micButton} 
-              onPress={() => { /* TODO: Implement voice search activation */ Toast.show({type: 'info', text1: 'Voice search not implemented yet.'}) }}
+              onPress={() => {
+                // Replace with toggleListening() when library is installed/configured
+                Toast.show({type: 'info', text1: 'Voice recognition requires manual setup.'});
+                // Example toggle for UI feedback:
+                // setIsListening(!isListening); 
+              }}
             >
-              <Mic size={24} color={colors.primary} />
+              {/* Change color based on listening state */}
+              <Mic size={24} color={isListening ? colors.error : colors.primary} /> 
             </Pressable>
           </Animated.View>
         </View>
