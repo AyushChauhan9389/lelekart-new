@@ -1,14 +1,14 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { 
-  StyleSheet, 
-  View, 
-  Dimensions, 
-  Pressable, 
-  ActivityIndicator, 
+  StyleSheet,
+  View,
+  Dimensions,
+  Pressable,
+  ActivityIndicator,
   TextInput,
   Keyboard
 } from 'react-native';
-import { Search as SearchIcon, ArrowLeft, X } from 'lucide-react-native';
+import { Search as SearchIcon, ArrowLeft, X, Mic } from 'lucide-react-native'; // Import Mic icon
 import { router } from 'expo-router';
 import Animated, { 
   withSpring, 
@@ -20,6 +20,7 @@ import Animated, {
   Layout
 } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message'; // Import Toast
 import { ScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchProductGrid } from '@/components/search/SearchProductGrid'; // Import the new component
@@ -184,6 +185,13 @@ export default function SearchScreen() {
                 </Pressable>
               )}
             </View>
+            {/* Add Mic button */}
+            <Pressable 
+              style={styles.micButton} 
+              onPress={() => { /* TODO: Implement voice search activation */ Toast.show({type: 'info', text1: 'Voice search not implemented yet.'}) }}
+            >
+              <Mic size={24} color={colors.primary} />
+            </Pressable>
           </Animated.View>
         </View>
       </SafeAreaView>
@@ -291,6 +299,10 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 4,
+  },
+  micButton: {
+    padding: SPACING,
+    marginLeft: SPACING / 2,
   },
   content: {
     flex: 1,

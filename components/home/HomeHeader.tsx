@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react'; // Import useState, useEffect
-import { StyleSheet, View, Pressable, Dimensions, ActivityIndicator } from 'react-native'; // Import ActivityIndicator
+import React, { useState, useEffect, useMemo } from 'react';
+import { StyleSheet, View, Pressable, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, MapPin, LogIn } from 'lucide-react-native'; // Import MapPin, LogIn
+import { Bell, MapPin, LogIn, Mic } from 'lucide-react-native'; // Import Mic icon
 import { router } from 'expo-router';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -102,9 +102,10 @@ export function HomeHeader() {
       {/* Search Bar (Now a button that navigates to search screen) */}
       <Pressable
         style={[styles.searchButton, { backgroundColor: colors.surface }]}
-        onPress={() => router.push('/(tabs)/search')}
+        onPress={() => router.push('/(tabs)/search')} // Keep navigation to search page
       >
         <ThemedText style={styles.searchText}>Search products...</ThemedText>
+        <Mic size={20} color={colors.textSecondary} style={styles.micIcon} />
       </Pressable>
       </View> 
     </SafeAreaView> 
@@ -146,6 +147,9 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
   },
+  micIcon: {
+    marginLeft: 8, // Add some space before the icon
+  },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -175,12 +179,15 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
     padding: 8,
   },
   searchButton: {
+    flexDirection: 'row', // Align text and icon horizontally
+    justifyContent: 'space-between', // Push icon to the right
+    alignItems: 'center', // Vertically center items
     margin: 12,
     padding: 12,
     borderRadius: 8,
-    alignItems: 'flex-start',
   },
   searchText: {
+    flex: 1, // Allow text to take available space
     fontSize: 14,
     opacity: 0.7,
   },
