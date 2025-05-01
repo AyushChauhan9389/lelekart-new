@@ -50,6 +50,7 @@ export function Input({
             style,
           ]}
           placeholderTextColor={colors.textSecondary}
+          cursorColor={colors.text} // Explicitly set cursor color
           autoCapitalize="none"
           {...props}
         />

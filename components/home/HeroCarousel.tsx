@@ -94,7 +94,13 @@ export function HeroCarousel({ data }: HeroCarouselProps) {
             <Button
               variant="secondary"
               onPress={() => {
-                if (item.productId) router.push(`/product/${item.productId}`);
+                // Navigate based on category presence
+                if (item.category) {
+                  router.push(`/category/${encodeURIComponent(item.category)}`);
+                } else {
+                  router.push('/categories'); // Fallback to general categories page
+                }
+                // Removed productId navigation logic as per requirement
               }}
               style={styles.button}
             >

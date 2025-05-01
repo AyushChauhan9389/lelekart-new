@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Image, Alert } from 'react-native'; // Added Alert
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { NavigationHeader } from '@/components/ui/NavigationHeader';
-import { MapPin, Package, Truck, Clock, Calendar, CreditCard } from 'lucide-react-native';
+import { MapPin, Package, Truck, Clock, Calendar, CreditCard, XCircle } from 'lucide-react-native'; // Added XCircle
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { api } from '@/utils/api';
-import type { Order, OrderItem } from '@/types/api';
+import type { Order, OrderItem } from '@/types/api'; // Ensure OrderItem is imported
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
+import { Button } from '@/components/ui/Button'; // Import Button
 
 type TrackingInfo = {
   trackingId?: string;
@@ -34,6 +35,8 @@ export default function OrderDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false); // State for cancellation loading
+  const [cancelError, setCancelError] = useState<string | null>(null); // State for cancellation error
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -120,14 +123,46 @@ export default function OrderDetailScreen() {
         return colors.success;
       case 'processing':
       case 'confirmed':
-      case 'pending':
         return colors.warning;
+      case 'pending': // Keep pending distinct if needed for button logic
+        return colors.warning; // Or a specific color for pending
       case 'cancelled':
         return colors.error;
       default:
         return colors.text;
     }
   };
+
+  const handleCancelOrder = useCallback(async () => {
+    if (!order || !id) return;
+
+    Alert.alert(
+      "Confirm Cancellation",
+      "Are you sure you want to cancel this order?",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Yes, Cancel",
+          style: "destructive",
+          onPress: async () => {
+            setIsCancelling(true);
+            setCancelError(null);
+            try {
+              const orderId = Number(id);
+              const updatedOrder = await api.orders.cancelOrder(orderId);
+              setOrder(updatedOrder); // Update local state with the cancelled order
+              // Optionally, show a success message or just rely on status update
+            } catch (err) {
+              console.error('Failed to cancel order:', err);
+              setCancelError('Failed to cancel the order. Please try again.');
+            } finally {
+              setIsCancelling(false);
+            }
+          }
+        }
+      ]
+    );
+  }, [order, id]);
 
   // Show loading indicator while auth or order data is loading
   if (isLoading || isAuthLoading) {
@@ -184,7 +219,7 @@ export default function OrderDetailScreen() {
           <View style={styles.summaryRow}>
             <Calendar size={16} color={colors.textSecondary} />
             <ThemedText style={styles.summaryText}>
-              Placed on {formatDate(order.createdAt || order.date)}
+              Placed on {formatDate(order.createdAt || order.date)} 
             </ThemedText>
           </View>
           <View style={styles.summaryRow}>
@@ -193,6 +228,24 @@ export default function OrderDetailScreen() {
               {order.status?.toUpperCase() || 'UNKNOWN'}
             </ThemedText>
           </View>
+          {/* Cancel Button Area */}
+          {order.status === 'pending' && (
+            <View style={styles.cancelSection}>
+              {cancelError && (
+                <ThemedText style={[styles.errorText, styles.cancelErrorText]}>
+                  {cancelError}
+                </ThemedText>
+              )}
+              <Button
+                variant="destructive"
+                onPress={handleCancelOrder}
+                disabled={isCancelling}
+                fullWidth
+              >
+                {isCancelling ? 'Cancelling...' : 'Cancel Order'}
+              </Button>
+            </View>
+          )}
         </View>
 
         {tracking && (tracking.trackingId || tracking.currentLocation || tracking.statusTimeline?.length) && (
@@ -293,10 +346,12 @@ export default function OrderDetailScreen() {
             <View style={styles.priceRow}>
               <ThemedText style={styles.priceLabel}>Subtotal</ThemedText>
               <ThemedText style={styles.priceValue}>
-                {formatCurrency(order.totalAmount ?? order.total)}
+                {/* Use totalAmount if available, otherwise fallback to total */}
+                {formatCurrency(order.totalAmount ?? order.total)} 
               </ThemedText>
             </View>
-            {order.discountAmount && order.discountAmount > 0 && (
+            {/* Use discountAmount if available and greater than 0 */}
+            {(order.discountAmount ?? 0) > 0 && ( 
               <View style={styles.priceRow}>
                 <ThemedText style={styles.priceLabel}>Discount</ThemedText>
                 <ThemedText style={[styles.priceValue, { color: colors.success }]}>
@@ -304,11 +359,23 @@ export default function OrderDetailScreen() {
                 </ThemedText>
               </View>
             )}
-            {order.walletCoinsUsed && order.walletCoinsUsed > 0 && (
+             {/* Use walletCoinsUsed if available and greater than 0 */}
+            {(order.walletCoinsUsed ?? 0) > 0 && (
               <View style={styles.priceRow}>
                 <ThemedText style={styles.priceLabel}>Coins Used</ThemedText>
                 <ThemedText style={[styles.priceValue, { color: colors.success }]}>
-                  -{formatCurrency(order.walletCoinsUsed)}
+                  {/* Assuming walletCoinsUsed represents the coin count, not currency value yet */}
+                  {/* If it represents currency value, use formatCurrency(order.walletCoinsUsed) */}
+                  {order.walletCoinsUsed} Coins 
+                </ThemedText>
+              </View>
+            )}
+             {/* Use walletDiscount if available and greater than 0 */}
+            {(order.walletDiscount ?? 0) > 0 && (
+              <View style={styles.priceRow}>
+                <ThemedText style={styles.priceLabel}>Wallet Discount</ThemedText>
+                <ThemedText style={[styles.priceValue, { color: colors.success }]}>
+                  -{formatCurrency(order.walletDiscount)}
                 </ThemedText>
               </View>
             )}
@@ -317,6 +384,7 @@ export default function OrderDetailScreen() {
                 Total Paid
               </ThemedText>
               <ThemedText style={[styles.finalTotalValue, { color: colors.primary }]}>
+                 {/* Use finalAmount if available, otherwise fallback to total */}
                 {formatCurrency(order.finalAmount ?? order.total)}
               </ThemedText>
             </View>
@@ -339,14 +407,15 @@ export default function OrderDetailScreen() {
                 {order.shippingDetails.address}
               </ThemedText>
               <ThemedText style={styles.addressText}>
-                {order.shippingDetails.city}, {order.shippingDetails.state} {order.shippingDetails.zipCode}
+                {/* Access properties correctly from the shippingDetails object */}
+                {order.shippingDetails.city}, {order.shippingDetails.state} {order.shippingDetails.zipCode} 
               </ThemedText>
               <ThemedText style={styles.addressText}>
-                Phone: {order.shippingDetails.phone}
+                Phone: {order.shippingDetails.phone} 
               </ThemedText>
-              {order.shippingDetails.notes && (
+              {order.shippingDetails.notes && ( 
                 <ThemedText style={styles.notes}>
-                  Notes: {order.shippingDetails.notes}
+                  Notes: {order.shippingDetails.notes} 
                 </ThemedText>
               )}
             </View>
@@ -399,6 +468,18 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       textAlign: 'center',
       opacity: colorScheme === 'dark' ? 0.5 : 0.7,
       fontSize: 16,
+    },
+    cancelSection: {
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    cancelErrorText: {
+      marginBottom: 12,
+      color: colors.error, // Ensure error text uses error color
+      fontSize: 14,
+      opacity: 1,
     },
     section: {
       padding: 16,

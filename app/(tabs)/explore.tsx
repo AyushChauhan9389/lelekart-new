@@ -35,7 +35,7 @@ export default function ExploreScreen() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Removed isLoadingMore state
   const [error, setError] = useState<string | null>(null);
   const [showGoTopButton, setShowGoTopButton] = useState(false); // State for button
   const flatListRef = useRef<FlatList>(null); // Ref for FlatList
@@ -46,52 +46,51 @@ export default function ExploreScreen() {
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
   const { user } = useAuth(); // Get user
 
-  const fetchProducts = useCallback(async (page: number, initialLoad = false) => {
-    if (initialLoad) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
+  // Removed useCallback wrapper
+  const fetchProducts = async (page: number) => {
+    setIsLoading(true);
     setError(null);
+    // Note: goToTop is now called in useEffect before this function
 
     try {
-      const response = await api.products.getAll(page, 10); // Fetch 10 products per page
-      if (response.products && response.products.length > 0) {
-        setProducts((prevProducts) => {
-          if (page === 1) {
-            return response.products!; // Replace for page 1
-          } else {
-            // Filter out duplicates before appending
-            const existingIds = new Set(prevProducts.map(p => p.id));
-            //@ts-ignorebun
-            const newUniqueProducts = response.products!.filter(p => !existingIds.has(p.id));
-            return [...prevProducts, ...newUniqueProducts];
-          }
-        });
-        setTotalPages(response.pagination!.totalPages);
+      const limit = 10;
+      console.log(`[ExploreScreen] Fetching page ${page}, limit ${limit}`); // Log request
+      const response = await api.products.getAll(page, limit);
+      console.log('[ExploreScreen] API Response:', JSON.stringify(response, null, 2)); // Log raw response
+
+      // Access data based on the actual API response structure
+      if (response && response.products && response.pagination && typeof response.pagination.total === 'number') {
+        console.log(`[ExploreScreen] Setting products for page ${page}:`, response.products.length, 'items'); // Log product count
+        setProducts(response.products); // Use response.products
+        // Calculate total pages using response.pagination.total or response.pagination.totalPages
+        const totalItems = response.pagination.total;
+        const calculatedTotalPages = response.pagination.totalPages ?? Math.max(1, Math.ceil(totalItems / limit)); // Prefer totalPages if available
+        console.log(`[ExploreScreen] Setting total pages: ${calculatedTotalPages} (Total items: ${totalItems})`); // Log total pages calculation
+        setTotalPages(calculatedTotalPages);
       } else {
-        if (page === 1) setProducts([]); // Clear if first page has no products
+         console.warn('[ExploreScreen] API response missing products or pagination details, or invalid format. Response:', response); // Updated warning
+         setProducts([]);
+         setTotalPages(1);
       }
     } catch (err) {
       console.error('Error fetching products:', err);
       setError('Failed to load products.');
+      setProducts([]);
+      setTotalPages(1); // Ensure totalPages is 1 on error
     } finally {
       setIsLoading(false);
-      setIsLoadingMore(false);
     }
-  }, []);
+  }; // Removed useCallback wrapper and its empty dependency array
 
+  // Fetch products when currentPage changes
   useEffect(() => {
-    fetchProducts(1, true); // Fetch first page on mount
-  }, [fetchProducts]);
+    // Scroll to top before fetching new page data
+    goToTop();
+    fetchProducts(currentPage);
+    // Only depend on currentPage. fetchProducts is stable now.
+  }, [currentPage]);
 
-  const handleLoadMore = () => {
-    if (!isLoadingMore && currentPage < totalPages) {
-      const nextPage = currentPage + 1;
-      setCurrentPage(nextPage);
-      fetchProducts(nextPage);
-    }
-  };
+  // Removed handleLoadMore
 
   // Scroll handler for Explore screen
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -259,12 +258,52 @@ export default function ExploreScreen() {
     <ProductExploreItem item={item} styles={styles} colors={colors} />
   ), [styles, colors]); // Depend on styles and colors
 
-  const renderFooter = () => {
-    if (!isLoadingMore) return null;
-    return <ActivityIndicator style={styles.footerLoader} size="large" color={colors.primary} />;
+  // Removed renderFooter for infinite scroll loader
+
+  // Pagination Handlers
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
   };
 
-  if (isLoading) {
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Render Pagination Controls
+  const renderPaginationControls = () => {
+    if (totalPages <= 1) return null; // Don't show controls for 1 or less pages
+
+    return (
+      <View style={styles.paginationContainer}>
+        <Button
+          onPress={handlePreviousPage}
+          disabled={currentPage === 1 || isLoading}
+          variant="outline"
+          size="sm"
+        >
+          Previous
+        </Button>
+        <ThemedText style={styles.pageInfoText}>
+          Page {currentPage} of {totalPages}
+        </ThemedText>
+        <Button
+          onPress={handleNextPage}
+          disabled={currentPage >= totalPages || isLoading}
+          variant="outline"
+          size="sm"
+        >
+          Next
+        </Button>
+      </View>
+    );
+  };
+
+  // Show initial loading indicator only for the first page load
+  if (isLoading && currentPage === 1) {
     return (
       <ThemedView style={styles.centeredContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -272,7 +311,8 @@ export default function ExploreScreen() {
     );
   }
 
-  if (error && products.length === 0) {
+  // Show error message if there's an error and no products could be loaded initially
+  if (error && currentPage === 1 && products.length === 0) {
     return (
       <ThemedView style={styles.centeredContainer}>
         <ThemedText style={styles.errorText}>{error}</ThemedText>
@@ -293,15 +333,22 @@ export default function ExploreScreen() {
         ref={flatListRef} // Attach ref
         onScroll={handleScroll} // Attach scroll handler
         scrollEventThrottle={16} // Throttle scroll events
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderFooter}
+        // Removed onEndReached, onEndReachedThreshold, ListFooterComponent
         ListEmptyComponent={
-          !isLoading && !error ? ( // Show only if not loading and no error
-            <ThemedText style={styles.emptyText}>No products found.</ThemedText>
+          // Show empty message only when not loading, no error, and products array is empty
+          !isLoading && !error && products.length === 0 ? (
+            <View style={styles.centeredContainer}>
+              <ThemedText style={styles.emptyText}>No products found.</ThemedText>
+            </View>
           ) : null
         }
       />
+      {/* Show error message below list if an error occurred on subsequent loads */}
+      {error && currentPage > 1 && (
+         <View style={styles.errorFooter}>
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+         </View>
+      )}
       {/* Go to Top Button */}
       {showGoTopButton && (
         <TouchableOpacity
@@ -311,6 +358,8 @@ export default function ExploreScreen() {
           <ArrowUp size={24} color={colors.background} />
         </TouchableOpacity>
       )}
+      {/* Render Pagination Controls */}
+      {renderPaginationControls()}
     </ThemedView>
   );
 }
@@ -423,6 +472,25 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
   addToCartButton: {
     marginTop: SPACING * 0.75,
   },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING,
+    paddingHorizontal: SPACING * 1.5,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background, // Ensure background color matches theme
+  },
+  pageInfoText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+   errorFooter: { // Style for error message shown below list
+     padding: SPACING,
+     alignItems: 'center',
+   },
   goToTopButton: { // Style for Go to Top button (same as index.tsx)
     position: 'absolute',
     bottom: 30,

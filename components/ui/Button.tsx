@@ -4,7 +4,7 @@ import React from 'react';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'; // Added 'destructive'
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
@@ -42,6 +42,8 @@ export function Button({
         return colors.primary;
       case 'secondary':
         return colors.secondary;
+      case 'destructive': // Added destructive case
+        return colors.error;
       case 'outline':
       case 'ghost':
         return 'transparent';
@@ -65,7 +67,8 @@ export function Button({
     switch (variant) {
       case 'primary':
       case 'secondary':
-        return colors.background;
+      case 'destructive': // Added destructive case
+        return colors.background; // Assuming white/light text on error background
       case 'outline':
       case 'ghost':
         return colors.primary;

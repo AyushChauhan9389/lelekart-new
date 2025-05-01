@@ -169,6 +169,10 @@ export const api = {
     },
     getOrderById: (id: number | string) =>
       fetchApi<Order>(`/api/orders/${id}`),
+    cancelOrder: (id: number | string) => // Add cancelOrder function
+      fetchApi<Order>(`/api/orders/${id}/cancel`, {
+        method: 'POST',
+      }),
     create: (data: {
       userId: number;
       total: number;
