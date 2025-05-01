@@ -75,9 +75,15 @@ export default function ProductScreen() {
               if (trimmedSize) sizes.add(trimmedSize);
             });
           });
+          const firstVariant = data.variants[0];
+          const firstSize = firstVariant.size?.split(',')[0]?.trim() || null; // Get first size safely
+
           setUniqueColors(Array.from(colors));
           setUniqueSizes(Array.from(sizes));
-          setSelectedVariant(data.variants[0]);
+          // Set default selections based on the first variant
+          setSelectedVariant(firstVariant);
+          setSelectedColor(firstVariant.color || null); // Handle potential missing color
+          setSelectedSize(firstSize); // Set the first size
         }
       } catch (error) {
         console.error('Error fetching product:', error);
@@ -470,10 +476,12 @@ export default function ProductScreen() {
       <View style={styles.bottomButtonContainer}>
         <View style={styles.loggedInBottomRow}>
           <View style={styles.buttonWrapper}>
-            <LoadingButton onPress={handleAddToCart} style={styles.cartButton} variant="outline" disabled={addingToCart || !selectedVariant} textStyle={{ color: colors.text }} leftIcon={<ShoppingCart size={20} color={colors.text} />}>Cart</LoadingButton>
+            {/* Disable if adding to cart OR if variants exist but none are selected */}
+            <LoadingButton onPress={handleAddToCart} style={styles.cartButton} variant="outline" disabled={addingToCart || (!!product.variants?.length && !selectedVariant)} textStyle={{ color: colors.text }} leftIcon={<ShoppingCart size={20} color={colors.text} />}>Cart</LoadingButton>
           </View>
           <View style={styles.buttonWrapper}>
-            {user ? <LoadingButton onPress={handleBuyNow} style={styles.buyButton} disabled={!selectedVariant} leftIcon={<Zap size={20} color={colors.background} />}>Buy Now</LoadingButton> : <LoadingButton onPress={() => router.push('/(auth)/login')} style={styles.buyButton} leftIcon={<LogIn size={20} color={colors.background} />}>Login to Buy</LoadingButton>}
+            {/* Disable Buy Now if variants exist but none are selected */}
+            {user ? <LoadingButton onPress={handleBuyNow} style={styles.buyButton} disabled={!!product.variants?.length && !selectedVariant} leftIcon={<Zap size={20} color={colors.background} />}>Buy Now</LoadingButton> : <LoadingButton onPress={() => router.push('/(auth)/login')} style={styles.buyButton} leftIcon={<LogIn size={20} color={colors.background} />}>Login to Buy</LoadingButton>}
           </View>
         </View>
       </View>

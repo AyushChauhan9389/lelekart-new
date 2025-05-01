@@ -43,7 +43,9 @@ export default function EditAddressScreen() {
       setIsLoading(true); // Start loading address data
       try {
         const addresses = await api.addresses.getAll();
+        console.log('[EditAddressScreen] Fetched addresses:', JSON.stringify(addresses, null, 2)); // Log fetched data
         const foundAddress = addresses.find(addr => addr.id === Number(id));
+        console.log('[EditAddressScreen] Found address for editing:', JSON.stringify(foundAddress, null, 2)); // Log the specific address
         if (!foundAddress) {
           Alert.alert('Error', 'Address not found');
           router.back();
@@ -63,11 +65,25 @@ export default function EditAddressScreen() {
   }, [id, user]); // Add user dependency
 
   const handleSubmit = async (formData: Parameters<typeof api.addresses.update>[1]) => {
-    if (!address) return;
+    // Ensure address and address.id exist before proceeding
+    if (!address || typeof address.id !== 'number') {
+        console.error("Address or Address ID is missing, cannot update.");
+        Alert.alert('Error', 'Cannot update address, ID is missing.');
+        return;
+    }
 
     setIsSubmitting(true);
     try {
-      await api.addresses.update(address.id, formData);
+      // Transform data: map zipCode to pincode for the API call
+      const apiData = {
+        ...formData,
+        pincode: formData.zipCode, // Map zipCode to pincode
+        zipCode: undefined, // Remove zipCode field if necessary
+      };
+      delete (apiData as any).zipCode; // Remove zipCode explicitly
+
+      // Now address.id is guaranteed to be a number
+      await api.addresses.update(address.id, apiData as any); // Use transformed data
       router.back();
     } catch (error) {
       console.error('Error updating address:', error);

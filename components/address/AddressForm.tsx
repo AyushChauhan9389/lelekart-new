@@ -19,7 +19,7 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
     address: initialData?.address || '',
     city: initialData?.city || '',
     state: initialData?.state || '',
-    zipCode: initialData?.zipCode || '', // Use zipCode
+    pincode: initialData?.pincode || '', // Revert back to pincode
     isDefault: initialData?.isDefault || false,
   });
 
@@ -34,7 +34,7 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
     if (!formData.address) newErrors.address = 'Address is required';
     if (!formData.city) newErrors.city = 'City is required';
     if (!formData.state) newErrors.state = 'State is required';
-    if (!formData.zipCode) newErrors.zipCode = 'ZIP/PIN code is required'; // Use zipCode
+    if (!formData.pincode) newErrors.pincode = 'PIN code is required'; // Revert back to pincode
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -105,13 +105,13 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
       />
 
       <Input
-        label="ZIP / PIN Code" // Update label
-        value={formData.zipCode} // Use zipCode
-        onChangeText={(text) => setFormData(prev => ({ ...prev, zipCode: text }))} // Use zipCode
-        placeholder="6-digit ZIP/PIN code"
+        label="PIN Code" // Revert label
+        value={formData.pincode} // Revert back to pincode
+        onChangeText={(text) => setFormData(prev => ({ ...prev, pincode: text }))} // Revert back to pincode
+        placeholder="6-digit PIN code"
         keyboardType="number-pad"
         maxLength={6}
-        error={errors.zipCode} // Use zipCode
+        error={errors.pincode} // Revert back to pincode
       />
 
       <View style={styles.footer}>
