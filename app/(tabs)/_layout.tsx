@@ -45,12 +45,13 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: 'absolute',
-          },
-          default: {},
-        }),
+        // Removed absolute positioning for iOS tab bar
+        // tabBarStyle: Platform.select({
+        //   ios: {
+        //     position: 'absolute',
+        //   },
+        //   default: {},
+        // }),
       }}>
       {/* All Tabs are defined directly */}
       <Tabs.Screen
@@ -80,7 +81,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: cartCount > 0 ? `Cart (${cartCount})` : 'Cart',
+          title: 'Cart',
           headerShown: true,
           tabBarIcon: ({ color, size }) => <ShoppingCart size={size} color={color} />, // Use Lucide ShoppingCart
           // href removed - protection handled in screen

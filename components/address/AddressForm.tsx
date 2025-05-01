@@ -19,7 +19,7 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
     address: initialData?.address || '',
     city: initialData?.city || '',
     state: initialData?.state || '',
-    pincode: initialData?.pincode || '',
+    zipCode: initialData?.zipCode || '', // Use zipCode
     isDefault: initialData?.isDefault || false,
   });
 
@@ -34,7 +34,7 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
     if (!formData.address) newErrors.address = 'Address is required';
     if (!formData.city) newErrors.city = 'City is required';
     if (!formData.state) newErrors.state = 'State is required';
-    if (!formData.pincode) newErrors.pincode = 'PIN code is required';
+    if (!formData.zipCode) newErrors.zipCode = 'ZIP/PIN code is required'; // Use zipCode
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -67,9 +67,14 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
       <Input
         label="Phone"
         value={formData.phone}
-        onChangeText={(text) => setFormData(prev => ({ ...prev, phone: text }))}
+        onChangeText={(text) => {
+          // Remove non-numeric characters and update state
+          const numericText = text.replace(/[^0-9]/g, '');
+          setFormData(prev => ({ ...prev, phone: numericText }));
+        }}
         placeholder="1234567890"
         keyboardType="phone-pad"
+        maxLength={10} // Add maxLength validation
         error={errors.phone}
       />
 
@@ -100,13 +105,13 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
       />
 
       <Input
-        label="PIN Code"
-        value={formData.pincode}
-        onChangeText={(text) => setFormData(prev => ({ ...prev, pincode: text }))}
-        placeholder="6-digit PIN code"
+        label="ZIP / PIN Code" // Update label
+        value={formData.zipCode} // Use zipCode
+        onChangeText={(text) => setFormData(prev => ({ ...prev, zipCode: text }))} // Use zipCode
+        placeholder="6-digit ZIP/PIN code"
         keyboardType="number-pad"
         maxLength={6}
-        error={errors.pincode}
+        error={errors.zipCode} // Use zipCode
       />
 
       <View style={styles.footer}>

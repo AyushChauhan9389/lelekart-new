@@ -323,9 +323,11 @@ export default function ExploreScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ title: 'Explore' }} />
-      <FlatList
-        data={products}
-        renderItem={renderProductItemCallback} // Use the callback
+      {/* Wrapper View for FlatList to constrain its height */}
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={products}
+          renderItem={renderProductItemCallback} // Use the callback
         keyExtractor={(item) => item.id.toString()}
         numColumns={COLUMN_COUNT}
         contentContainerStyle={styles.listContentContainer}
@@ -347,13 +349,16 @@ export default function ExploreScreen() {
             </View>
           ) : null
         }
-      />
-      {/* Show error message below list if an error occurred on subsequent loads */}
-      {error && currentPage > 1 && (
-         <View style={styles.errorFooter}>
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
-         </View>
-      )}
+        />
+        {/* Show error message below list if an error occurred on subsequent loads */}
+        {error && currentPage > 1 && (
+           <View style={styles.errorFooter}>
+              <ThemedText style={styles.errorText}>{error}</ThemedText>
+           </View>
+        )}
+      </View>
+      {/* Render Pagination Controls outside the flex: 1 wrapper */}
+      {renderPaginationControls()}
       {/* Go to Top Button */}
       {showGoTopButton && (
         <TouchableOpacity
@@ -363,8 +368,7 @@ export default function ExploreScreen() {
           <ArrowUp size={24} color={colors.background} />
         </TouchableOpacity>
       )}
-      {/* Render Pagination Controls */}
-      {renderPaginationControls()}
+      {/* Removed duplicated renderPaginationControls() call */}
     </ThemedView>
   );
 }
