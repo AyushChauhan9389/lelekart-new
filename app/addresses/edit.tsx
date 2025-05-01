@@ -64,7 +64,8 @@ export default function EditAddressScreen() {
     fetchAddress();
   }, [id, user]); // Add user dependency
 
-  const handleSubmit = async (formData: Parameters<typeof api.addresses.update>[1]) => {
+  // Align type with AddressForm's onSubmit prop
+  const handleSubmit = async (formData: Omit<Address, 'id' | 'userId'>) => {
     // Ensure address and address.id exist before proceeding
     if (!address || typeof address.id !== 'number') {
         console.error("Address or Address ID is missing, cannot update.");
@@ -74,16 +75,12 @@ export default function EditAddressScreen() {
 
     setIsSubmitting(true);
     try {
-      // Transform data: map zipCode to pincode for the API call
-      const apiData = {
-        ...formData,
-        pincode: formData.zipCode, // Map zipCode to pincode
-        zipCode: undefined, // Remove zipCode field if necessary
-      };
-      delete (apiData as any).zipCode; // Remove zipCode explicitly
+      // No transformation needed, formData already uses pincode
+      // Log the exact payload being sent
+      console.log('[EditAddressScreen] Sending update payload:', JSON.stringify(formData, null, 2));
 
       // Now address.id is guaranteed to be a number
-      await api.addresses.update(address.id, apiData as any); // Use transformed data
+      await api.addresses.update(address.id, formData);
       router.back();
     } catch (error) {
       console.error('Error updating address:', error);

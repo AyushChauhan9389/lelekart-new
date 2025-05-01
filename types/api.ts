@@ -103,7 +103,7 @@ export interface Address {
   landmark?: string;
   city: string;
   state: string;
-  zipCode: string; // Changed from pincode to zipCode
+  pincode: string; // Reverted back to pincode
   isDefault?: boolean;
 }
 
@@ -123,9 +123,8 @@ export interface PaginationInfo {
 }
 
 export interface PaginatedResponse<T> {
-  products: T[]; // Changed from items
-  pagination: PaginationInfo; // Nested pagination object
-  // Remove top-level fields if they are now nested
+  products: T[];
+  pagination: PaginationInfo;
   // total: number;
   // page: number;
   // limit: number;
@@ -273,7 +272,7 @@ export interface Order {
     address: string;
     city: string;
     state: string;
-    zipCode: string;
+    pincode: string; // Reverted back to pincode
     notes?: string;
   };
   items: OrderItem[]; // Changed from CartItem[]

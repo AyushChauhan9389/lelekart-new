@@ -407,8 +407,8 @@ export default function OrderDetailScreen() {
                 {order.shippingDetails.address}
               </ThemedText>
               <ThemedText style={styles.addressText}>
-                {/* Access properties correctly from the shippingDetails object */}
-                {order.shippingDetails.city}, {order.shippingDetails.state} {order.shippingDetails.zipCode} 
+                {/* Revert back to pincode */}
+                {order.shippingDetails.city}, {order.shippingDetails.state} {order.shippingDetails.pincode} 
               </ThemedText>
               <ThemedText style={styles.addressText}>
                 Phone: {order.shippingDetails.phone} 

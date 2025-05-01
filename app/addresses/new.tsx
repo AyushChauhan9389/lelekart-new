@@ -23,16 +23,8 @@ export default function NewAddressScreen() {
   const handleSubmit = async (formData: Omit<Address, 'id' | 'userId'>) => { // Use the Address type from types/api.ts
     setIsSubmitting(true);
     try {
-      // Transform data: map zipCode to pincode for the API call
-      const apiData = {
-        ...formData,
-        pincode: formData.zipCode, // Map zipCode to pincode
-        zipCode: undefined, // Remove zipCode field if necessary, or let backend ignore it
-      };
-      // Remove zipCode explicitly if backend complains about extra fields
-      delete (apiData as any).zipCode;
-
-      await api.addresses.add(apiData as any); // Use the transformed data (cast to any if needed)
+      // No transformation needed, formData already uses pincode
+      await api.addresses.add(formData);
       router.back(); // Go back after successful submission
     } catch (error) {
       console.error('Error adding address:', error);
