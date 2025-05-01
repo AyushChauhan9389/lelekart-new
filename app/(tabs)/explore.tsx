@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'; // Import memo
 import { storage } from '@/utils/storage';
 import {
   StyleSheet,
@@ -102,8 +102,8 @@ export default function ExploreScreen() {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  // -- Render Item Component for Explore Tab --
-  const ProductExploreItem = ({ item, styles, colors }: { item: Product, styles: any, colors: any }) => {
+  // -- Render Item Component for Explore Tab (Memoized) --
+  const ProductExploreItem = memo(({ item, styles, colors }: { item: Product, styles: any, colors: any }) => {
     const [isInWishlist, setIsInWishlist] = useState(false);
     const [updatingWishlist, setUpdatingWishlist] = useState(false);
     const [addingToCart, setAddingToCart] = useState(false);
@@ -250,7 +250,7 @@ export default function ExploreScreen() {
          </View>
       </Pressable>
     );
-  };
+  }); // Close React.memo wrapper
    // -- End Render Item Component --
 
   // Memoized callback for renderItem
@@ -285,7 +285,7 @@ export default function ExploreScreen() {
           variant="outline"
           size="sm"
         >
-          Previous
+          {isLoading && currentPage > 1 ? 'Loading...' : 'Previous'}
         </Button>
         <ThemedText style={styles.pageInfoText}>
           Page {currentPage} of {totalPages}
@@ -296,7 +296,7 @@ export default function ExploreScreen() {
           variant="outline"
           size="sm"
         >
-          Next
+           {isLoading && currentPage < totalPages ? 'Loading...' : 'Next'}
         </Button>
       </View>
     );
@@ -333,6 +333,11 @@ export default function ExploreScreen() {
         ref={flatListRef} // Attach ref
         onScroll={handleScroll} // Attach scroll handler
         scrollEventThrottle={16} // Throttle scroll events
+        // Optimization Props
+        initialNumToRender={6} // Render slightly more than visible initially (adjust as needed)
+        maxToRenderPerBatch={10} // Render batches of 10
+        windowSize={11} // Keep ~5 screens before/after rendered (adjust as needed)
+        removeClippedSubviews={false} // Explicitly disable
         // Removed onEndReached, onEndReachedThreshold, ListFooterComponent
         ListEmptyComponent={
           // Show empty message only when not loading, no error, and products array is empty
