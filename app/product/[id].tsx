@@ -76,14 +76,23 @@ export default function ProductScreen() {
             });
           });
           const firstVariant = data.variants[0];
-          const firstSize = firstVariant.size?.split(',')[0]?.trim() || null; // Get first size safely
-
-          setUniqueColors(Array.from(colors));
-          setUniqueSizes(Array.from(sizes));
-          // Set default selections based on the first variant
-          setSelectedVariant(firstVariant);
-          setSelectedColor(firstVariant.color || null); // Handle potential missing color
-          setSelectedSize(firstSize); // Set the first size
+          const colorsList = Array.from(colors);
+          const sizesList = Array.from(sizes);
+          
+          setUniqueColors(colorsList);
+          setUniqueSizes(sizesList);
+          
+          // Set default selections based on available variants
+          if (colorsList.length > 0) {
+            setSelectedColor(firstVariant.color || colorsList[0]);
+          }
+          if (sizesList.length > 0) {
+            setSelectedSize(firstVariant.size?.split(',')[0]?.trim() || sizesList[0]);
+          }
+          // Set the matching variant for the selected color and size
+          if (firstVariant) {
+            setSelectedVariant(firstVariant);
+          }
         }
       } catch (error) {
         console.error('Error fetching product:', error);
@@ -372,12 +381,18 @@ export default function ProductScreen() {
           {/* Color Selector */}
           {uniqueColors.length > 0 && (
             <View style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Choose Size</ThemedText>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Choose Color</ThemedText>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
-                {uniqueColors.map((size: string) => (
-                  <TouchableOpacity key={size} style={[styles.selectorButton, selectedSize === size ? styles.selectorButtonSelected : {}, { borderColor: colors.border, backgroundColor: selectedSize === size ? colors.text : colors.background }]} onPress={() => setSelectedSize(size)}>
-                    <ThemedText style={[styles.selectorButtonText, selectedSize === size ? styles.selectorButtonTextSelected : {}, { color: selectedSize === size ? colors.background : colors.text }]}>{size}</ThemedText>
-                  </TouchableOpacity>
+                {uniqueColors.map((color: string) => (
+                  <TouchableOpacity 
+                    key={color} 
+                    style={[
+                      styles.colorSelectorButton,
+                      selectedColor === color ? styles.colorSelectorButtonSelected : {},
+                      { backgroundColor: color.toLowerCase() }
+                    ]} 
+                    onPress={() => setSelectedColor(color)}
+                  />
                 ))}
               </ScrollView>
             </View>
