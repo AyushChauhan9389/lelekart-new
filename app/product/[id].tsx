@@ -372,10 +372,12 @@ export default function ProductScreen() {
           {/* Color Selector */}
           {uniqueColors.length > 0 && (
             <View style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Color</ThemedText>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Choose Size</ThemedText>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
-                {uniqueColors.map((color: string) => (
-                  <TouchableOpacity key={color} style={[styles.colorSelectorButton, selectedColor === color ? styles.colorSelectorButtonSelected : {}, { backgroundColor: color, borderColor: selectedColor === color ? colors.primary : colors.border }]} onPress={() => setSelectedColor(color)} />
+                {uniqueColors.map((size: string) => (
+                  <TouchableOpacity key={size} style={[styles.selectorButton, selectedSize === size ? styles.selectorButtonSelected : {}, { borderColor: colors.border, backgroundColor: selectedSize === size ? colors.text : colors.background }]} onPress={() => setSelectedSize(size)}>
+                    <ThemedText style={[styles.selectorButtonText, selectedSize === size ? styles.selectorButtonTextSelected : {}, { color: selectedSize === size ? colors.background : colors.text }]}>{size}</ThemedText>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
