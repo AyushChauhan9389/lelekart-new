@@ -62,7 +62,7 @@ export default function WalletScreen() {
         item.type === 'credit' ? styles.creditAmount : styles.debitAmount,
         { color: item.type === 'credit' ? colors.success : colors.error }
       ]}>
-        {item.type === 'credit' ? '+' : '-'}₹{item.amount.toFixed(2)}
+        {item.type === 'credit' ? '+' : '-'}{item.amount} Coins
       </ThemedText>
     </View>
   );
@@ -81,8 +81,14 @@ export default function WalletScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Balance Section */}
         <View style={[styles.section, styles.balanceSection, { backgroundColor: colors.primary }]}>
-          <ThemedText style={styles.balanceLabel}>Current Balance</ThemedText>
-          <ThemedText style={styles.balanceAmount}>₹{walletDetails?.balance?.toFixed(2) ?? '0.00'}</ThemedText>
+          <ThemedText style={styles.balanceLabel}>Current Coin Balance</ThemedText>
+          <ThemedText style={styles.balanceAmount}>{walletDetails?.balance ?? 0} Coins</ThemedText>
+          {/* Show calculated currency value if possible */}
+          {walletDetails && settings && !isNaN(parseFloat(settings.coinToCurrencyRatio)) && (
+            <ThemedText style={styles.balanceValue}>
+              (≈ ₹{(walletDetails.balance * parseFloat(settings.coinToCurrencyRatio)).toFixed(2)})
+            </ThemedText>
+          )}
           {/* Add lifetime stats if available in Wallet type */}
           {/* <ThemedText style={styles.lifetimeStats}>
             Lifetime Earned: ₹{walletDetails?.lifetimeEarned?.toFixed(2) ?? '0.00'} | Redeemed: ₹{walletDetails?.lifetimeRedeemed?.toFixed(2) ?? '0.00'}
@@ -160,7 +166,13 @@ const createStyles = (colors: typeof Colors.light) => StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     color: colors.background,
-    lineHeight: 44, // Add lineHeight to prevent cutoff
+    lineHeight: 44,
+  },
+  balanceValue: {
+    fontSize: 14,
+    color: colors.background,
+    opacity: 0.8,
+    marginTop: 4,
   },
   lifetimeStats: {
     fontSize: 12,
