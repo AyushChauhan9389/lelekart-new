@@ -115,7 +115,7 @@ export default function CartScreen() {
     }
   };
 
-  const SHIPPING_COST = 40;
+  const SHIPPING_COST = 0;
   const subtotalAmount = cartItems.reduce(
     (sum, item) => sum + (item.product.price * item.quantity),
     0

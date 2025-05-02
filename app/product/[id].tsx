@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text, Image, TextInput, FlatList } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { ScrollView, StyleSheet, View, SafeAreaView, ActivityIndicator, Platform, useWindowDimensions, TouchableOpacity, Text, Image, TextInput, FlatList, Share } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 import { useLocalSearchParams, router } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { LoadingButton } from '@/components/ui/LoadingButton'; // Use LoadingButton
 import { ReviewModal } from '@/components/product/ReviewModal';
-import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Zap, MessageCircle } from 'lucide-react-native';
+import { ShoppingCart, LogIn, Heart, ArrowLeft, Star, Zap, MessageCircle, Share2 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import type { Product, ProductVariant, StoredProduct, ProductRatingResponse, Review, CreateReviewPayload } from '@/types/api'; // Import Review types
@@ -27,6 +27,17 @@ export default function ProductScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
   const { width } = useWindowDimensions();
+  
+  // Refs
+  const scrollViewRef = useRef<ScrollView>(null);
+  const reviewSectionRef = useRef<View>(null);
+  
+  // Scroll to reviews function
+  const scrollToReviews = () => {
+    reviewSectionRef.current?.measureInWindow((x, y) => {
+      scrollViewRef.current?.scrollTo({ y, animated: true });
+    });
+  };
 
   // Auth context
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -45,6 +56,7 @@ export default function ProductScreen() {
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [pincode, setPincode] = useState('');
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
+  const [isCheckingPincode, setIsCheckingPincode] = useState(false);
   const [ratingData, setRatingData] = useState<ProductRatingResponse | null>(null);
   const [isLoadingRating, setIsLoadingRating] = useState(true);
   // New state for reviews
@@ -155,16 +167,13 @@ export default function ProductScreen() {
   }, [selectedColor, selectedSize, product?.variants]);
 
   // Calculate delivery date
-  useEffect(() => {
-    const calculateDeliveryDate = () => {
-      const today = new Date();
-      const delivery = new Date(today);
-      delivery.setDate(today.getDate() + 5);
-      const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
-      setDeliveryDate(delivery.toLocaleDateString('en-US', options));
-    };
-    calculateDeliveryDate();
-  }, [pincode]);
+  const calculateDeliveryDate = () => {
+    const today = new Date();
+    const delivery = new Date(today);
+    delivery.setDate(today.getDate() + 5);
+    const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+    setDeliveryDate(delivery.toLocaleDateString('en-US', options));
+  };
 
   // Wishlist status check
   useEffect(() => {
@@ -326,16 +335,47 @@ export default function ProductScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContentContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.container}
+        contentContainerStyle={styles.scrollContentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Image Carousel */}
         <View style={styles.imageContainer}>
           <ImageCarousel images={carouselImages} />
           <TouchableOpacity style={[styles.overlayButton, styles.backButton]} onPress={() => router.back()}>
             <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.overlayButton, styles.wishlistButtonOverlay]} onPress={handleWishlistToggle} disabled={updatingWishlist}>
-            <Heart size={24} color={isInWishlist ? colors.error : colors.text} fill={isInWishlist ? colors.error : 'none'} strokeWidth={2} />
-          </TouchableOpacity>
+          <View style={styles.overlayButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.overlayButton, styles.actionButton]} 
+              onPress={async () => {
+                try {
+                  await Share.share({
+                    message: `Check out ${product.name} on LeLeKart`,
+                    url: `https://lelekart.in/product/${id}`
+                  });
+                } catch (error) {
+                  console.error('Error sharing:', error);
+                }
+              }}
+            >
+              <Share2 size={24} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.overlayButton, styles.actionButton]} 
+              onPress={handleWishlistToggle} 
+              disabled={updatingWishlist}
+            >
+              <Heart 
+                size={24} 
+                color={isInWishlist ? colors.error : colors.text} 
+                fill={isInWishlist ? colors.error : 'none'} 
+                strokeWidth={2} 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Product Details */}
@@ -344,10 +384,12 @@ export default function ProductScreen() {
           <View style={styles.nameReviewRow}>
             <ThemedText type="title" style={styles.name}>{product.name}</ThemedText>
             {isLoadingRating ? <ActivityIndicator size="small" color={colors.textSecondary} /> : ratingData ? (
-              <View style={styles.reviewContainer}>
-                <Star size={16} color={colors.warning} fill={colors.warning} />
-                <ThemedText style={styles.reviewText}>{ratingData.averageRating.toFixed(1)} ({ratingData.totalReviews} reviews)</ThemedText>
-              </View>
+              <TouchableOpacity onPress={scrollToReviews}>
+                <View style={styles.reviewContainer}>
+                  <Star size={16} color={colors.warning} fill={colors.warning} />
+                  <ThemedText style={styles.reviewText}>{ratingData.averageRating.toFixed(1)} ({ratingData.totalReviews} reviews)</ThemedText>
+                </View>
+              </TouchableOpacity>
             ) : null}
           </View>
 
@@ -412,7 +454,24 @@ export default function ProductScreen() {
           {product.specifications && (
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>Specifications</ThemedText>
-              <RenderHTML contentWidth={width - 40} source={{ html: product.specifications }} baseStyle={{ color: colors.text, opacity: colorScheme === 'dark' ? 0.7 : 0.8 }} tagsStyles={{ p: { marginVertical: 5, lineHeight: 22 }, li: { marginBottom: 8, lineHeight: 22 } }} />
+              <RenderHTML 
+                contentWidth={width - 40} 
+                source={{ html: product.specifications }} 
+                baseStyle={{ 
+                  color: colors.text, 
+                  opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+                  fontSize: 14,
+                  lineHeight: 22 
+                }} 
+                defaultTextProps={{}}
+                tagsStyles={{ 
+                  p: { marginVertical: 5 }, 
+                  li: { marginBottom: 8 }, 
+                  body: { margin: 0, padding: 0 }
+                }} 
+                enableExperimentalBRCollapsing
+                enableExperimentalGhostLinesPrevention
+              />
             </View>
           )}
 
@@ -441,7 +500,7 @@ export default function ProductScreen() {
           )}
 
           {/* Reviews Section */}
-          <View style={styles.section}>
+          <View ref={reviewSectionRef} style={styles.section}>
             <View style={styles.reviewsHeader}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>Customer Reviews ({reviews.length})</ThemedText>
               {user && !hasUserReviewed && (
@@ -472,13 +531,67 @@ export default function ProductScreen() {
 
           {/* Pincode / Delivery Section */}
           <View style={styles.section}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Check Delivery</ThemedText>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Shipping</ThemedText>
             <View style={styles.pincodeContainer}>
-              <TextInput style={[styles.pincodeInput, { borderColor: colors.border, color: colors.text }]} placeholder="Enter Pincode" placeholderTextColor={colors.textSecondary} keyboardType="numeric" maxLength={6} value={pincode} onChangeText={setPincode} />
-              <LoadingButton size="sm" style={styles.pincodeButton} disabled={pincode.length !== 6} onPress={() => { /* API call? */ }}>Check</LoadingButton>
+              <TextInput 
+                style={[
+                  styles.pincodeInput, 
+                  { borderColor: colors.border, color: colors.text }
+                ]} 
+                placeholder="Enter Pincode for Delivery Estimate" 
+                placeholderTextColor={colors.textSecondary} 
+                keyboardType="numeric" 
+                maxLength={6} 
+                value={pincode} 
+                onChangeText={(text) => setPincode(text.replace(/[^0-9]/g, ''))}
+              />
+              <LoadingButton 
+                size="sm" 
+                style={styles.pincodeButton}
+                loading={isCheckingPincode}
+                disabled={isCheckingPincode} 
+                onPress={async () => {
+                  if (pincode.length !== 6) {
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Invalid Pincode',
+                      text2: 'Please enter a valid 6-digit pincode',
+                      position: 'bottom'
+                    });
+                    return;
+                  }
+                  setIsCheckingPincode(true);
+                  try {
+                    // Simulate API call
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    calculateDeliveryDate();
+                    Toast.show({
+                      type: 'success',
+                      text1: 'Delivery Available',
+                      text2: 'We deliver to this location',
+                      position: 'bottom'
+                    });
+                  } catch (error) {
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Error',
+                      text2: 'Failed to check pincode',
+                      position: 'bottom'
+                    });
+                  } finally {
+                    setIsCheckingPincode(false);
+                  }
+                }}
+              >
+                Check
+              </LoadingButton>
             </View>
-            {deliveryDate && pincode.length === 6 && <ThemedText style={[styles.deliveryText, { color: colors.success }]}>Estimated delivery by {deliveryDate}</ThemedText>}
-            {pincode.length > 0 && pincode.length < 6 && <ThemedText style={[styles.deliveryText, { color: colors.error }]}>Enter a valid 6-digit pincode</ThemedText>}
+            {deliveryDate && (
+              <View style={styles.shippingInfo}>
+                <ThemedText style={[styles.deliveryText, { color: colors.success }]}>Free Shipping</ThemedText>
+                <ThemedText style={styles.deliveryText}>Estimated delivery by {deliveryDate}</ThemedText>
+              </View>
+            )}
           </View>
 
           {/* Recommendations Section */}
@@ -542,9 +655,42 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
     scrollContentContainer: { paddingBottom: 90 },
     imageContainer: { position: 'relative', backgroundColor: colors.border },
-    overlayButton: { position: 'absolute', top: Platform.OS === 'ios' ? 60 : 30, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.7)', justifyContent: 'center', alignItems: 'center', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }, android: { elevation: 3, backgroundColor: colors.card } }) },
+    overlayButton: { 
+      position: 'absolute', 
+      top: Platform.OS === 'ios' ? 60 : 30, 
+      width: 40, 
+      height: 40, 
+      borderRadius: 20, 
+      backgroundColor: colorScheme === 'dark' ? colors.background : 'rgba(255, 255, 255, 0.8)', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      ...Platform.select({ 
+        ios: { 
+          shadowColor: colorScheme === 'dark' ? colors.border : '#000',
+          shadowOffset: { width: 0, height: 2 }, 
+          shadowOpacity: 0.25, 
+          shadowRadius: 4 
+        }, 
+        android: { 
+          elevation: 3,
+          borderWidth: colorScheme === 'dark' ? 1 : 0,
+          borderColor: colors.border
+        } 
+      }) 
+    },
     backButton: { left: 15 },
-    wishlistButtonOverlay: { right: 15 },
+    overlayButtonsContainer: { 
+      position: 'absolute',
+      top: Platform.OS === 'ios' ? 60 : 30,
+      right: 15,
+      flexDirection: 'row',
+      gap: 8
+    },
+    actionButton: { 
+      position: 'relative', 
+      top: 0, 
+      right: 0 
+    },
     detailsContainer: { padding: 20, backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, marginTop: -20, zIndex: 1 },
     nameReviewRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 },
     name: { flex: 1, fontSize: 22, fontWeight: '600', marginRight: 10, color: colors.text },
@@ -582,6 +728,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     totalReviewsText: { fontSize: 12, color: colors.textSecondary },
     ratingBars: { flex: 1, paddingLeft: 10 },
     tooltip: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    shippingInfo: { marginBottom: 12 },
     // Review Styles
     reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     reviewItem: { padding: 16, borderRadius: 8, borderWidth: 1 },

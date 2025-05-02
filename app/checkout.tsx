@@ -32,7 +32,7 @@ export default function CheckoutScreen() {
     [cartItems]
   );
 
-  const SHIPPING_COST = 40;
+  const SHIPPING_COST = 0;
   const totalBeforeDiscount = subtotal + SHIPPING_COST;
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function CheckoutScreen() {
       const validation = await api.wallet.validateRedemption(
         totalBeforeDiscount,
         numericCoins,
-        cartItems.map(item => item.product.category)
+        cartItems.map(item => item.product.category || '')
       );
 
       if (validation.valid) {
@@ -120,8 +120,9 @@ export default function CheckoutScreen() {
         const paymentOrder = await api.payment.createOrder(totalBeforeDiscount - coinsToUse);
         // TODO: Integrate Razorpay SDK here
         // For now, simulate success
-        paymentId = `simulated_${paymentOrder.id}`;
-        orderId = paymentOrder.id;
+        const simulatedId = Math.random().toString(36).substring(7);
+        paymentId = `simulated_${simulatedId}`;
+        orderId = simulatedId;
         Alert.alert("Simulated Payment", `Razorpay Order ID: ${orderId}\nPayment ID: ${paymentId}`);
       }
 
