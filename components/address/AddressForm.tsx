@@ -131,20 +131,7 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View>
-        <Input
-          label="PIN Code"
-          value={formData.pincode}
-          onChangeText={handlePincodeChange}
-          placeholder="6-digit PIN code"
-          keyboardType="number-pad"
-          maxLength={6}
-          error={pincodeValidationError || errors.pincode}
-        />
-        {isValidatingPincode && (
-          <ActivityIndicator size="small" color={colors.primary} style={styles.pincodeLoader} />
-        )}
-      </View>
+      
 
       <Input
         label="Address Nickname"
@@ -184,7 +171,20 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
         numberOfLines={3}
         error={errors.address}
       />
-
+      <View>
+        <Input
+          label="PIN Code"
+          value={formData.pincode}
+          onChangeText={handlePincodeChange}
+          placeholder="6-digit PIN code"
+          keyboardType="number-pad"
+          maxLength={6}
+          error={pincodeValidationError || errors.pincode}
+        />
+        {isValidatingPincode && (
+          <ActivityIndicator size="small" color={colors.primary} style={styles.pincodeLoader} />
+        )}
+      </View>
       <Input
         label="City"
         value={formData.city}
