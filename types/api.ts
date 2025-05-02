@@ -323,6 +323,8 @@ export interface CreateOrderRequest {
   orderId?: string | null;
   shippingDetails: string;
   addressId?: number;
+  walletDiscount?: number; // Added for wallet usage
+  walletCoinsUsed?: number; // Added for wallet usage
   items?: {
     productId: number;
     quantity: number;

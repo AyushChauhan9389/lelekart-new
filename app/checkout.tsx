@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View, ScrollView, ActivityIndicator, Alert, Pressable, TextInput, TouchableOpacity, Platform } from 'react-native';
-import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { StyleSheet, View, ScrollView, ActivityIndicator, Alert, Pressable, Switch, TouchableOpacity, Platform } from 'react-native'; // Import Switch
+import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
 import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/utils/api';
-import type { Address, CartItem, CreateOrderRequest } from '@/types/api';
+import type { Address, CartItem, CreateOrderRequest, WalletSettings } from '@/types/api'; // Import WalletSettings
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -22,8 +21,11 @@ export default function CheckoutScreen() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [coinsToUse, setCoinsToUse] = useState(0);
+  const [walletCoinBalance, setWalletCoinBalance] = useState(0); // Renamed for clarity
+  const [walletSettings, setWalletSettings] = useState<WalletSettings | null>(null);
+  const [useWalletCoins, setUseWalletCoins] = useState(false); // State for checkbox/switch
+  const [calculatedDiscount, setCalculatedDiscount] = useState(0);
+  const [calculatedCoinsToUse, setCalculatedCoinsToUse] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<'cod' | 'razorpay'>('cod');
 
@@ -32,9 +34,10 @@ export default function CheckoutScreen() {
     [cartItems]
   );
 
-  const SHIPPING_COST = 0;
-  const totalBeforeDiscount = subtotal + SHIPPING_COST;
+  const SHIPPING_COST = 0; // Assuming free shipping for now
+  const totalBeforeWallet = subtotal + SHIPPING_COST; // Total before applying wallet discount
 
+  // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
       if (!user) {
@@ -42,16 +45,20 @@ export default function CheckoutScreen() {
         router.replace('/(auth)/login'); // Redirect if not logged in
         return;
       }
+      setIsLoading(true); // Ensure loading state is true at the start
       try {
-        const [cartResponse, addressesResponse, walletResponse] = await Promise.all([
+        // Fetch cart, addresses, wallet details, and wallet settings concurrently
+        const [cartResponse, addressesResponse, walletDetailsResponse, walletSettingsResponse] = await Promise.all([
           api.cart.getItems(),
           api.addresses.getAll(),
-          api.wallet.getDetails()
+          api.wallet.getDetails(),
+          api.wallet.getSettings() // Fetch wallet settings
         ]);
 
         setCartItems(cartResponse);
         setAddresses(addressesResponse);
-        setWalletBalance(walletResponse.balance);
+        setWalletCoinBalance(walletDetailsResponse.balance); // Corrected: Use 'balance' field for coin count
+        setWalletSettings(walletSettingsResponse); // Store wallet settings
 
         const defaultAddress = addressesResponse.find(addr => addr.isDefault);
         if (defaultAddress) {
@@ -69,7 +76,68 @@ export default function CheckoutScreen() {
     };
 
     fetchData();
-  }, [user]); // Depend on user
+  }, [user]);
+
+  // Calculate potential wallet discount when relevant data changes
+  useEffect(() => {
+    console.log('Recalculating discount. Settings:', walletSettings, 'Balance:', walletCoinBalance, 'Subtotal:', subtotal);
+
+    let newDiscount = 0;
+    let newCoinsToUse = 0;
+    let discountApplicable = false;
+
+    // Perform checks and calculations only if data is valid
+    if (walletSettings && walletCoinBalance > 0 && subtotal > 0) {
+        const minCartValue = parseFloat(walletSettings.minCartValue || '0');
+        const coinRatio = parseFloat(walletSettings.coinToCurrencyRatio);
+        const maxUsagePercent = parseFloat(walletSettings.maxUsagePercentage);
+
+        // Check validity of settings and minimum cart value
+        if (subtotal >= minCartValue && !isNaN(coinRatio) && coinRatio > 0 && !isNaN(maxUsagePercent) && maxUsagePercent >= 0) {
+            const maxDiscountFromPercentage = subtotal * (maxUsagePercent / 100);
+            const maxCoinsFromPercentage = Math.floor(maxDiscountFromPercentage / coinRatio);
+
+            const maxApplicableCoins = Math.min(
+              walletCoinBalance,
+              walletSettings.maxRedeemableCoins,
+              maxCoinsFromPercentage > 0 ? maxCoinsFromPercentage : 0
+            );
+
+            const actualDiscount = maxApplicableCoins * coinRatio;
+            const roundedDiscount = Math.round(actualDiscount * 100) / 100;
+
+            if (roundedDiscount > 0 && maxApplicableCoins > 0) {
+                newDiscount = roundedDiscount;
+                newCoinsToUse = maxApplicableCoins;
+                discountApplicable = true;
+                console.log(`Calculation successful: Discount=${newDiscount}, Coins=${newCoinsToUse}`);
+            } else {
+                 console.log('Calculation resulted in zero discount/coins.');
+            }
+        } else {
+             console.log(`Calculation skipped: Subtotal ${subtotal} < minCartValue ${minCartValue} or invalid settings.`);
+        }
+    } else {
+        console.log('Calculation skipped: Missing settings, balance, or subtotal.');
+    }
+
+    // Update state *outside* the conditional logic if values changed
+    if (calculatedDiscount !== newDiscount || calculatedCoinsToUse !== newCoinsToUse) {
+        console.log(`Updating state: Discount=${newDiscount}, Coins=${newCoinsToUse}`);
+        setCalculatedDiscount(newDiscount);
+        setCalculatedCoinsToUse(newCoinsToUse);
+    }
+
+    // Reset the toggle *only* if the discount is no longer applicable
+    if (!discountApplicable && useWalletCoins) {
+        console.log('Resetting useWalletCoins toggle because discount is no longer applicable.');
+        setUseWalletCoins(false);
+    }
+
+  // Dependencies: Recalculate whenever these primary inputs change.
+  // Also include useWalletCoins to handle the reset logic correctly.
+  }, [walletSettings, walletCoinBalance, subtotal, useWalletCoins, calculatedDiscount, calculatedCoinsToUse]);
+
 
   const handleAddAddress = () => {
     router.push('/addresses');
@@ -79,31 +147,13 @@ export default function CheckoutScreen() {
     setSelectedAddress(address);
   };
 
-  const handleCoinsChange = async (coins: number) => {
-    const numericCoins = Math.max(0, Math.floor(coins)); // Ensure positive integer
-    if (numericCoins > walletBalance) {
-      setCoinsToUse(walletBalance); // Cap at available balance
-      return;
-    }
-    
-    try {
-      const validation = await api.wallet.validateRedemption(
-        totalBeforeDiscount,
-        numericCoins,
-        cartItems.map(item => item.product.category || '')
-      );
-
-      if (validation.valid) {
-        setCoinsToUse(validation.coinsApplicable);
-      } else {
-        Alert.alert('Invalid', validation.message);
-        setCoinsToUse(0);
-      }
-    } catch (error) {
-      console.error('Error validating coins:', error);
-      Alert.alert('Error', 'Failed to validate wallet coins. Please try again.');
+  // Toggle using wallet coins
+  const toggleUseWallet = (value: boolean) => {
+    if (calculatedDiscount > 0) { // Only allow toggle if there's a potential discount
+      setUseWalletCoins(value);
     }
   };
+
 
   const handleCheckout = async () => {
     if (!selectedAddress) {
@@ -113,17 +163,33 @@ export default function CheckoutScreen() {
 
     setIsProcessing(true);
     try {
-      let paymentId = null;
-      let orderId = null;
+      let paymentId: string | null = null;
+      let orderId: string | null = null;
+
+      // Determine final total and wallet details for the order payload
+      const finalTotal = useWalletCoins ? totalBeforeWallet - calculatedDiscount : totalBeforeWallet;
+      const walletDiscountForPayload = useWalletCoins ? calculatedDiscount : undefined;
+      const walletCoinsUsedForPayload = useWalletCoins ? calculatedCoinsToUse : undefined;
 
       if (selectedPayment === 'razorpay') {
-        const paymentOrder = await api.payment.createOrder(totalBeforeDiscount - coinsToUse);
-        // TODO: Integrate Razorpay SDK here
-        // For now, simulate success
+        // Ensure finalTotal is not negative if discount somehow exceeds total
+        const paymentAmount = Math.max(0, finalTotal);
+        if (paymentAmount > 0) {
+          const paymentOrder = await api.payment.createOrder(paymentAmount);
+          // TODO: Integrate Razorpay SDK here
+          // For now, simulate success
+          const simulatedId = Math.random().toString(36).substring(7);
+          paymentId = `simulated_${simulatedId}`;
+          orderId = simulatedId;
+          Alert.alert("Simulated Payment", `Razorpay Order ID: ${orderId}\nPayment ID: ${paymentId}`);
+        } else {
+          // Handle case where total is 0 or less after discount (free order)
+          paymentId = 'free_order';
+          orderId = `free_${Date.now()}`;
+        }
         const simulatedId = Math.random().toString(36).substring(7);
         paymentId = `simulated_${simulatedId}`;
         orderId = simulatedId;
-        Alert.alert("Simulated Payment", `Razorpay Order ID: ${orderId}\nPayment ID: ${paymentId}`);
       }
 
       const shippingDetailsStr = JSON.stringify({
@@ -139,19 +205,41 @@ export default function CheckoutScreen() {
 
       const orderData: CreateOrderRequest = {
         userId: user?.id || 0,
-        total: totalBeforeDiscount - coinsToUse,
+        total: Math.max(0, finalTotal), // Ensure total is not negative
         status: 'pending',
         paymentMethod: selectedPayment,
-        paymentId: paymentId || undefined,
-        orderId: orderId || undefined,
-        shippingDetails: shippingDetailsStr
-        // walletCoinsUsed is not part of CreateOrderRequest
-        // items are likely derived server-side from the cart based on userId
+        paymentId: paymentId || undefined, // Use the generated/simulated paymentId
+        orderId: orderId || undefined, // Use the generated/simulated orderId
+        shippingDetails: shippingDetailsStr,
+        walletDiscount: walletDiscountForPayload, // Add wallet discount if used
+        walletCoinsUsed: walletCoinsUsedForPayload, // Add coins used if applicable
+        addressId: selectedAddress.id // Include addressId if available
       };
 
-      const order = await api.orders.create(orderData);
-      // await api.cart.clearCart(); // Removed as function doesn't exist in context
-      router.replace(`/orders/${order.id}`);
+      const createdOrder = await api.orders.create(orderData);
+
+      // If wallet coins were used, attempt to redeem them
+      if (useWalletCoins && calculatedCoinsToUse > 0 && createdOrder?.id) {
+        try {
+          await api.wallet.redeem(
+            calculatedCoinsToUse,
+            'ORDER',
+            String(createdOrder.id),
+            `Used for order #${createdOrder.id}`
+          );
+          console.log(`Successfully redeemed ${calculatedCoinsToUse} coins for order ${createdOrder.id}`);
+        } catch (redeemError) {
+          // Log the error but proceed as per requirement (don't block user flow)
+          console.error(`Failed to redeem coins for order ${createdOrder.id}:`, redeemError);
+          // Optionally: Alert the user or log for backend reconciliation
+          // Alert.alert('Wallet Update Issue', 'Could not update wallet balance. Please contact support if needed.');
+        }
+      }
+
+      // TODO: Consider clearing the cart after successful order placement
+      // Example: await api.cart.clearCart(); (if function exists)
+
+      router.replace(`/orders/${createdOrder.id}`);
 
     } catch (error: any) {
       console.error('Checkout error:', error);
@@ -229,16 +317,19 @@ export default function CheckoutScreen() {
               <ThemedText>Shipping</ThemedText>
               <ThemedText>₹{SHIPPING_COST}</ThemedText>
             </View>
-            {coinsToUse > 0 && (
+            {/* Conditionally show wallet discount */}
+            {useWalletCoins && calculatedDiscount > 0 && (
               <View style={styles.costRow}>
-                <ThemedText>Wallet Discount</ThemedText>
-                <ThemedText style={[styles.discount, { color: colors.success }]}>-₹{coinsToUse}</ThemedText>
+                <ThemedText>Wallet Discount ({calculatedCoinsToUse} Coins)</ThemedText>
+                <ThemedText style={[styles.discount, { color: colors.success }]}>
+                  -₹{calculatedDiscount.toFixed(2)}
+                </ThemedText>
               </View>
             )}
             <View style={[styles.costRow, styles.totalRow, { borderTopColor: colors.border }]}>
               <ThemedText type="title">Total</ThemedText>
               <ThemedText type="title" style={[styles.totalAmount, { color: colors.primary }]}>
-                ₹{totalBeforeDiscount - coinsToUse}
+                ₹{(useWalletCoins ? totalBeforeWallet - calculatedDiscount : totalBeforeWallet).toFixed(2)}
               </ThemedText>
             </View>
           </View>
@@ -277,22 +368,37 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        {walletBalance > 0 && (
+        {/* Wallet Section - Show if settings are loaded */}
+        {walletSettings && ( // Check settings are loaded, show section regardless of balance > 0
           <View style={styles.section}>
             <ThemedText type="title" style={styles.sectionTitle}>LeLeKart Wallet</ThemedText>
-            <ThemedText>Available Balance: ₹{walletBalance}</ThemedText>
-            <View style={styles.walletInput}>
-              <ThemedText>Use Coins:</ThemedText>
-              <TextInput
-                style={[styles.coinsInput, { borderColor: colors.border, color: colors.text }]}
-                keyboardType="number-pad"
-                value={String(coinsToUse)}
-                onChangeText={(text) => handleCoinsChange(Number(text) || 0)}
-                maxLength={5}
-                placeholder="0"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
+            <ThemedText>Available Coin Balance: {walletCoinBalance}</ThemedText> {/* Display balance even if 0 */}
+
+            {/* Show interaction container if user has coins */}
+            {walletCoinBalance > 0 ? (
+              <View style={styles.walletToggleContainer}>
+                <ThemedText style={styles.walletToggleLabel}>
+                  {calculatedDiscount > 0
+                    ? `Apply Discount (-₹${calculatedDiscount.toFixed(2)} using ${calculatedCoinsToUse} coins)`
+                    : subtotal < parseFloat(walletSettings?.minCartValue || '0') // Check minCartValue here for label
+                      ? `Min cart ₹${walletSettings?.minCartValue} needed`
+                      : 'Discount not applicable (check limits)'}
+                </ThemedText>
+                <Switch
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={useWalletCoins && calculatedDiscount > 0 ? colors.background : colors.surface}
+                  ios_backgroundColor={colors.border}
+                  onValueChange={toggleUseWallet}
+                  value={useWalletCoins && calculatedDiscount > 0} // Visually ON only if toggled AND discount > 0
+                  disabled={calculatedDiscount <= 0} // Disable if no actual discount calculated
+                />
+              </View>
+            ) : (
+              // Only show text if balance is 0
+              <ThemedText style={styles.noDiscountText}>
+                You have no coins available.
+              </ThemedText>
+            )}
           </View>
         )}
       </ScrollView>
@@ -436,14 +542,23 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       alignItems: 'center',
       marginTop: 12,
     },
-    coinsInput: {
-      marginLeft: 12,
-      borderWidth: 1,
-      borderRadius: 8,
-      paddingHorizontal: 12,
+    walletToggleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 12,
       paddingVertical: 8,
-      minWidth: 80,
-      fontSize: 16,
+    },
+    walletToggleLabel: {
+      flex: 1,
+      marginRight: 12,
+      fontSize: 15,
+    },
+    noDiscountText: {
+      marginTop: 8,
+      fontSize: 14,
+      opacity: 0.7,
+      fontStyle: 'italic',
     },
     footer: {
       padding: 16,

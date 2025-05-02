@@ -256,6 +256,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ amount, coinsToUse, categories }),
       }),
+    redeem: (amount: number, referenceType: 'ORDER', referenceId: string, description: string) =>
+      fetchApi<void>('/api/wallet/redeem', { // Expecting no content (204) or ignoring response body
+        method: 'POST',
+        body: JSON.stringify({ amount, referenceType, referenceId, description }),
+      }),
   },
   payment: {
     createOrder: (amount: number) =>
