@@ -201,6 +201,8 @@ export const api = {
         currentLocation: string;
         lastUpdated: string;
       }>(`/api/orders/${id}/tracking`),
+    getInvoicePdf: (id: number | string) =>
+      fetch(`${API_BASE_URL}/api/orders/${id}/invoice`),
   },
   wishlist: {
     getItems: () => fetchApi<WishlistItem[]>('/api/wishlist'),

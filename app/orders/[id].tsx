@@ -1,8 +1,11 @@
+/** @jsxImportSource react */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Image, Alert } from 'react-native'; // Added Alert
+import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Image, Alert, Share } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { NavigationHeader } from '@/components/ui/NavigationHeader';
-import { MapPin, Package, Truck, Clock, Calendar, CreditCard, XCircle } from 'lucide-react-native'; // Added XCircle
+import { MapPin, Package, Truck, Clock, Calendar, CreditCard, XCircle, Download } from 'lucide-react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { api } from '@/utils/api';
@@ -36,11 +39,71 @@ export default function OrderDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false); // State for cancellation loading
-  const [cancelError, setCancelError] = useState<string | null>(null); // State for cancellation error
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
+
+  const handleDownloadInvoice = useCallback(async () => {
+    if (!order?.id) return;
+
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    try {
+      // Download invoice PDF
+      const response = await api.orders.getInvoicePdf(order.id);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download invoice');
+      }
+
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.onload = async () => {
+        if (typeof reader.result === 'string') {
+          const base64Data = reader.result.split(',')[1];
+          const fileUri = FileSystem.documentDirectory + `invoice-${order.id}.pdf`;
+          
+          try {
+            await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            const canShare = await Sharing.isAvailableAsync();
+            
+            if (canShare) {
+              await Sharing.shareAsync(fileUri, {
+                mimeType: 'application/pdf',
+                dialogTitle: `Invoice for Order #${order.id}`,
+              });
+            } else {
+              Alert.alert('Error', 'Sharing is not available on this device');
+            }
+          } catch (err) {
+            console.error('Error saving/sharing file:', err);
+            setDownloadError('Failed to save or share the invoice');
+          }
+        }
+      };
+
+      reader.onerror = () => {
+        setDownloadError('Failed to process the invoice file');
+      };
+
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+      setDownloadError('Failed to download the invoice');
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [order?.id]);
+
   const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state
 
   const fetchOrderDetails = useCallback(async () => {
@@ -419,6 +482,22 @@ export default function OrderDetailScreen() {
                 </ThemedText>
               )}
             </View>
+            <View style={styles.downloadSection}>
+              {downloadError && (
+                <ThemedText style={styles.errorText}>
+                  {downloadError}
+                </ThemedText>
+              )}
+              <Button
+                onPress={handleDownloadInvoice}
+                disabled={isDownloading}
+                variant="secondary"
+                fullWidth
+                leftIcon={<Download size={20} color={colors.text} />}
+              >
+                {isDownloading ? 'Downloading...' : 'Download Invoice'}
+              </Button>
+            </View>
           </View>
         )}
 
@@ -477,9 +556,15 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     },
     cancelErrorText: {
       marginBottom: 12,
-      color: colors.error, // Ensure error text uses error color
+      color: colors.error,
       fontSize: 14,
       opacity: 1,
+    },
+    downloadSection: {
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
     },
     section: {
       padding: 16,
