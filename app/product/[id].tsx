@@ -424,7 +424,7 @@ export default function ProductScreen() {
           {uniqueColors.length > 0 && (
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>Choose Color</ThemedText>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectorScrollContainer}>
+              <View style={styles.colorSelectorContainer}>
                 {uniqueColors.map((color: string) => (
                   <TouchableOpacity 
                     key={color} 
@@ -443,7 +443,7 @@ export default function ProductScreen() {
                     </ThemedText>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
 
@@ -451,8 +451,14 @@ export default function ProductScreen() {
           {selectedVariant && (
             <View style={styles.section}>
               <View style={[styles.variantDetails, { backgroundColor: colors.card }]}>
-                <ThemedText style={[styles.variantText, { color: colors.textSecondary }]}>Stock: {selectedVariant.stock} units</ThemedText>
-                <ThemedText style={[styles.variantText, { color: colors.textSecondary }]}>SKU: {selectedVariant.sku}</ThemedText>
+                <View style={styles.variantItem}>
+                  <ThemedText style={[styles.variantLabel, { color: colors.textSecondary }]}>Stock:</ThemedText>
+                  <ThemedText style={[styles.variantValue, { color: colors.text }]}>{selectedVariant.stock} units</ThemedText>
+                </View>
+                <View style={styles.variantItem}>
+                  <ThemedText style={[styles.variantLabel, { color: colors.textSecondary }]}>SKU:</ThemedText>
+                  <ThemedText style={[styles.variantValue, { color: colors.text }]}>{selectedVariant.sku}</ThemedText>
+                </View>
               </View>
             </View>
           )}
@@ -714,17 +720,39 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     selectorButtonText: { fontSize: 14, fontWeight: '600' },
     selectorButtonSelected: { backgroundColor: colors.text, borderColor: colors.text },
     selectorButtonTextSelected: { color: colors.background },
+    colorSelectorContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginTop: 8
+    },
     colorSelectorButton: { 
       paddingHorizontal: 16,
       height: 44,
       borderRadius: 22,
       borderWidth: 1,
       justifyContent: 'center',
-      alignItems: 'center'
+      alignItems: 'center',
+      marginBottom: 8
     },
     colorSelectorButtonSelected: { backgroundColor: colors.text, borderColor: colors.text },
-    variantDetails: { padding: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between' },
-    variantText: { fontSize: 14 },
+    variantDetails: { 
+      padding: 12, 
+      borderRadius: 8,
+      gap: 8
+    },
+    variantItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8
+    },
+    variantLabel: { 
+      fontSize: 14,
+      fontWeight: '500'
+    },
+    variantValue: { 
+      fontSize: 14
+    },
     bottomButtonContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 30 : 16, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 4 }, android: { elevation: 5 } }) },
     loggedInBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     buttonWrapper: { flex: 1 },
