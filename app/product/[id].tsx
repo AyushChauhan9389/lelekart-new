@@ -431,10 +431,17 @@ export default function ProductScreen() {
                     style={[
                       styles.colorSelectorButton,
                       selectedColor === color ? styles.colorSelectorButtonSelected : {},
-                      { backgroundColor: color.toLowerCase() }
+                      { borderColor: colors.border }
                     ]} 
                     onPress={() => setSelectedColor(color)}
-                  />
+                  >
+                    <ThemedText style={[
+                      styles.selectorButtonText,
+                      selectedColor === color ? styles.selectorButtonTextSelected : {}
+                    ]}>
+                      {color}
+                    </ThemedText>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
@@ -707,8 +714,15 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     selectorButtonText: { fontSize: 14, fontWeight: '600' },
     selectorButtonSelected: { backgroundColor: colors.text, borderColor: colors.text },
     selectorButtonTextSelected: { color: colors.background },
-    colorSelectorButton: { width: 36, height: 36, borderRadius: 18, borderWidth: 2 },
-    colorSelectorButtonSelected: { borderColor: colors.primary, borderWidth: 3 },
+    colorSelectorButton: { 
+      paddingHorizontal: 16,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1,
+      justifyContent: 'center',
+      alignItems: 'center'
+    },
+    colorSelectorButtonSelected: { backgroundColor: colors.text, borderColor: colors.text },
     variantDetails: { padding: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between' },
     variantText: { fontSize: 14 },
     bottomButtonContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 30 : 16, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 4 }, android: { elevation: 5 } }) },
