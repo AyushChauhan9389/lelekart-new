@@ -144,8 +144,8 @@ export const api = {
       ),
     getAll: (page = 1, limit = 16) =>
       fetchApi<PaginatedResponse<Product>>(`/api/products?page=${page}&limit=${limit}`), // Keep this type for now
-    search: (query: string) =>
-      fetchApi<PaginatedResponse<Product>>(`/api/search?q=${encodeURIComponent(query)}`),
+    search: (query: string, limit: number = 6) =>
+      fetchApi<PaginatedResponse<Product>>(`/api/lelekart-search?q=${encodeURIComponent(query)}&limit=${limit}`),
     getRating: (productId: string) =>
       fetchApi<ProductRatingResponse>(`/api/products/${productId}/rating`),
     getReviews: (productId: string) =>

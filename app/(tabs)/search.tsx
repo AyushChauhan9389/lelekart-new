@@ -200,11 +200,14 @@ export default function SearchScreen() {
   const performSearch = async (query: string) => {
     setIsSearching(true);
     try {
-      // Temporary direct API call until we update the API utility
-      const response = await fetch(`https://lelekart.in/api/lelekart-search?q=${encodeURIComponent(query)}&limit=50`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setSearchResults(data);
+      const response = await api.products.search(query);
+      // The response is an array of products directly
+      if (Array.isArray(response)) {
+        // Sort by search_rank descending
+        const sortedResults = [...response].sort((a, b) => 
+          (b.search_rank || 0) - (a.search_rank || 0)
+        );
+        setSearchResults(sortedResults);
         await saveRecentSearch(query.trim());
       } else {
         setSearchResults([]);
