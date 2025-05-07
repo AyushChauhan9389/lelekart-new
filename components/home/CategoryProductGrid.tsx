@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Heart, ShoppingCart } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useCartUpdate } from '@/app/_layout'; // Import useCartUpdate from global layout
 import { Button } from '@/components/ui/Button';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -46,6 +47,7 @@ export function CategoryProductGrid({ data, containerWidth }: CategoryProductGri
     const [isInWishlist, setIsInWishlist] = useState(false);
     const [updatingWishlist, setUpdatingWishlist] = useState(false);
     const [addingToCart, setAddingToCart] = useState(false);
+    const { triggerCartUpdate } = useCartUpdate(); // Get triggerCartUpdate
 
     useEffect(() => {
       let isMounted = true;
@@ -115,6 +117,7 @@ export function CategoryProductGrid({ data, containerWidth }: CategoryProductGri
           await storage.cart.addItem(item, 1);
         }
         Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${item.name} added.`, position: 'bottom' });
+        triggerCartUpdate(); // Update cart badge
       } catch (error) {
         console.error('Failed to add to cart:', error);
         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to add item to cart.', position: 'bottom' });

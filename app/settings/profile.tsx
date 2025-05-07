@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View, Image, Pressable } from 'react-native'; // Added Image, Pressable
 import { router, Stack } from 'expo-router';
 import { NavigationHeader } from '@/components/ui/NavigationHeader';
 import { Bell } from 'lucide-react-native';
@@ -16,12 +16,8 @@ import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 import { ActivityIndicator } from 'react-native'; // Import ActivityIndicator
 
 export default function ProfileSettingsScreen() {
-  const [profile, setProfile] = useState<UserProfile>({
-    username: '',
-    email: '',
-    phone: '',
-    address: '',
-  });
+  // State for the editable phone number
+  const [editablePhone, setEditablePhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -33,23 +29,29 @@ export default function ProfileSettingsScreen() {
 
   useEffect(() => {
     if (user) {
-      setProfile({
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-      });
+      setEditablePhone(user.phone || '');
     }
   }, [user]);
 
   const handleSave = async () => {
-    setIsLoading(true);
     setError('');
     setSuccess('');
 
+    // Validate phone number
+    const phoneNumber = (editablePhone || '').replace(/\D/g, ''); // Remove non-digits
+    if (phoneNumber.length !== 10) {
+      setError('Phone number must be 10 digits.');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      await api.auth.updateProfile(profile);
+      // Send only the phone number for update
+      // The UserProfile type allows for partial updates.
+      await api.auth.updateProfile({ phone: phoneNumber }); 
       setSuccess('Profile updated successfully');
+      // Optionally, refresh user context or re-fetch user data if phone is part of it
+      // For now, we assume useAuth() will eventually reflect the change or a screen refresh will.
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
     } finally {
@@ -87,34 +89,29 @@ export default function ProfileSettingsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <NavigationHeader title="Profile Settings" />
       <View style={styles.content}>
+        {/* Display Username (non-editable) */}
         <Input
           label="Username"
-          value={profile.username}
-          onChangeText={(text) => setProfile(prev => ({ ...prev, username: text }))}
+          value={user?.username || ''} // Display username from context
+          editable={false}
           style={styles.input}
         />
-
+        
+        {/* Display Email (non-editable) */}
         <Input
           label="Email"
-          value={profile.email}
+          value={user?.email || ''} // Display email from context
           editable={false}
           style={styles.input}
         />
 
+        {/* Edit Phone Number */}
         <Input
           label="Phone"
-          value={profile.phone}
-          onChangeText={(text) => setProfile(prev => ({ ...prev, phone: text }))}
+          value={editablePhone}
+          onChangeText={setEditablePhone}
           keyboardType="phone-pad"
-          style={styles.input}
-        />
-
-        <Input
-          label="Address"
-          value={profile.address}
-          onChangeText={(text) => setProfile(prev => ({ ...prev, address: text }))}
-          multiline
-          numberOfLines={3}
+          maxLength={10} // Add maxLength to restrict input length
           style={styles.input}
         />
 

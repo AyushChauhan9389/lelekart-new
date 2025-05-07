@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, ActivityIndicator, RefreshControl, Platform, Pressable, Image } from 'react-native';
 import { storage } from '@/utils/storage';
 import Toast from 'react-native-toast-message';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router'; // Removed Stack as header is handled by layout
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/ui/Button';
@@ -12,9 +12,9 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Heart, ChevronRight, Trash2 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
-import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
+import { LoginPrompt } from '@/components/ui/LoginPrompt';
 
-export default function WishlistScreen() {
+export default function AccountWishlistScreen() { // Renamed function
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [imageLoadingStates, setImageLoadingStates] = useState<{ [key: number]: boolean }>({});
@@ -29,15 +29,12 @@ export default function WishlistScreen() {
   const fetchWishlist = async () => {
     try {
       if (user) {
-        // Fetch from server if logged in
         const wishlistItems = await api.wishlist.getItems();
         setItems(wishlistItems);
       } else {
-        // Fetch from local storage if not logged in
         const localItems = await storage.wishlist.getItems();
-        // Convert local items to WishlistItem format
         setItems(localItems.map(item => ({
-          id: item.productId, // Use productId as temporary item id
+          id: item.productId,
           userId: 0,
           productId: item.productId,
           product: item.product,
@@ -70,12 +67,12 @@ export default function WishlistScreen() {
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [user]); // Added user dependency for onRefresh
 
   useFocusEffect(
     useCallback(() => {
       fetchWishlist();
-    }, [])
+    }, [user]) // Added user dependency for useFocusEffect
   );
 
   const handleRemoveItem = async (productId: number) => {
@@ -91,7 +88,6 @@ export default function WishlistScreen() {
         text1: 'Item removed from wishlist',
         position: 'bottom',
       });
-      // Refetch the wishlist to ensure we have the latest data
       await fetchWishlist();
     } catch (error) {
       console.error('Failed to remove item:', error);
@@ -113,8 +109,12 @@ export default function WishlistScreen() {
       </ThemedView>
     );
   }
+  
+  // If not logged in and trying to access account wishlist, show login prompt
+  if (!user) {
+    return <LoginPrompt />;
+  }
 
-  // Show empty wishlist message if logged in but wishlist is empty
   if (items.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
@@ -129,6 +129,7 @@ export default function WishlistScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Stack.Screen and NavigationHeader removed as header is handled by layout */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -137,9 +138,9 @@ export default function WishlistScreen() {
             refreshing={isRefreshing} 
             onRefresh={onRefresh}
             tintColor={colors.primary}
-            colors={[colors.primary]} // Android
-            progressBackgroundColor={colors.card} // Android
-            progressViewOffset={Platform.OS === 'android' ? 80 : 0} // Better position on Android
+            colors={[colors.primary]}
+            progressBackgroundColor={colors.card}
+            progressViewOffset={Platform.OS === 'android' ? 80 : 0}
           />
         }
       >
@@ -171,7 +172,6 @@ export default function WishlistScreen() {
                       imageUrl = images[0];
                     }
                   } catch {
-                    // Ignore parsing error
                   }
                 }
                 return imageUrl || 'https://lelekart.in/images/electronics.svg';
@@ -245,7 +245,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       textAlign: 'center',
       opacity: colorScheme === 'dark' ? 0.5 : 0.7,
     },
-    loginButton: {
+    loginButton: { // Kept for LoginPrompt if it uses it, otherwise can be removed
       marginTop: 20,
       minWidth: 120,
     },
@@ -257,7 +257,7 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       paddingBottom: Platform.OS === 'ios' ? 32 : 16,
     },
     itemCard: {
-      marginHorizontal: 16,
+      marginHorizontal: 16, // Consistent with original
       marginBottom: 16,
       borderRadius: 12,
       flexDirection: 'row',
@@ -344,6 +344,4 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
     removeButton: {
       padding: 8,
     },
-    // Removed loginButton style as it's handled by LoginPrompt
-    // loginButton: { ... },
   });

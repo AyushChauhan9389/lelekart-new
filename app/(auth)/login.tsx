@@ -11,7 +11,6 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { api } from '@/utils/api'; // Import the api object
-import type { User } from '@/types/api'; // Import User type
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -38,7 +37,8 @@ export default function LoginScreen() {
       const response = await api.auth.requestOtp(email);
 
       // Show success message with expiry time
-      setError(`${response.message} (expires in ${Math.floor(response.expiresIn / 60)} minutes)`);
+      const expiresInMinutes = response.expiresIn ? Math.floor(response.expiresIn / 60) : 0;
+      setError(`${response.message} (expires in ${expiresInMinutes} minutes)`);
       setOtpSent(true); // Proceed to OTP entry
     } catch (err) {
       setError('Failed to send OTP. Please try again.');
@@ -80,7 +80,7 @@ export default function LoginScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <ThemedText type="title" style={styles.title}>Welcome to LeLeKart</ThemedText>
+        <ThemedText type="title" style={styles.title}>Welcome to Lelekart</ThemedText>
         <ThemedText type="subtitle" style={styles.subtitle}>
           Login with your email to continue
         </ThemedText>

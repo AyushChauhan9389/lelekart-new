@@ -55,7 +55,7 @@ export default function ProfileScreen() {
     <ThemedView style={styles.container}>
       <View style={[styles.optionsContainer, { backgroundColor: colors.surface }]}>
         <ProfileOption icon={Package} label="My Orders" onPress={() => router.push('/orders')} />
-        <ProfileOption icon={Heart} label="Wishlist" onPress={() => router.push('/(tabs)/wishlist')} />
+        <ProfileOption icon={Heart} label="Wishlist" onPress={() => router.push('/account/wishlist')} />
         <ProfileOption icon={Wallet} label="My Wallet" onPress={() => router.push('/wallet')} />
         <ProfileOption icon={MapPin} label="Saved Addresses" onPress={() => router.push('/addresses')} />
         <ProfileOption icon={Settings} label="Account Settings" onPress={() => router.push('/settings/profile')} isLast />

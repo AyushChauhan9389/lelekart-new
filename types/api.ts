@@ -59,6 +59,8 @@ export interface User {
 export interface VerifyOTPResponse {
   token: string;
   user: User;
+  isNewUser?: boolean; // Added optional isNewUser
+  email?: string; // Added optional email
 }
 
 export interface ProductVariant {
@@ -242,6 +244,7 @@ export interface FeaturedHeroProduct {
 export interface RequestOTPResponse {
   success: boolean;
   message: string;
+  expiresIn?: number; // Added optional expiresIn
 }
 
 export interface NotificationPreferences {
@@ -253,8 +256,10 @@ export interface NotificationPreferences {
 export interface UserProfile {
   firstName?: string;
   lastName?: string;
+  username?: string; // Added for display
   phone?: string;
   email?: string;
+  address?: string; // Added for editing
 }
 
 export interface Order {

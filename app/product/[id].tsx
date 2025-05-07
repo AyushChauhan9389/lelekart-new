@@ -8,6 +8,7 @@ import { storage } from '@/utils/storage';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/context/AuthContext';
+import { useCartUpdate } from '@/app/_layout'; // Import useCartUpdate from global layout
 import { ImageCarousel } from '@/components/product/ImageCarousel';
 import { LoadingButton } from '@/components/ui/LoadingButton'; // Use LoadingButton
 import { ReviewModal } from '@/components/product/ReviewModal';
@@ -41,6 +42,7 @@ export default function ProductScreen() {
 
   // Auth context
   const { user, isLoading: isAuthLoading } = useAuth();
+  const { triggerCartUpdate } = useCartUpdate(); // Get triggerCartUpdate
 
   // State
   const [product, setProduct] = useState<StoredProduct | null>(null);
@@ -246,6 +248,7 @@ export default function ProductScreen() {
       if (user) await api.cart.addItem(product.id, 1);
       else await storage.cart.addItem(product, 1);
       Toast.show({ type: 'success', text1: 'Added to Cart', text2: `${product.name} added.`, position: 'bottom' });
+      triggerCartUpdate(); // Update cart badge
     } catch (error) {
       console.error('Failed to add to cart:', error);
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to add item to cart.', position: 'bottom' });
@@ -260,6 +263,7 @@ export default function ProductScreen() {
     if (!user) { router.push('/(auth)/login'); return; }
     try {
       await api.cart.addItem(product.id, 1);
+      triggerCartUpdate(); // Update cart badge
       router.push('/checkout');
     } catch (error) {
       console.error('Failed to add item to cart:', error);

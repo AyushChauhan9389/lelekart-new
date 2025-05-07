@@ -292,24 +292,43 @@ export default function OrderDetailScreen() {
               {order.status?.toUpperCase() || 'UNKNOWN'}
             </ThemedText>
           </View>
-          {/* Cancel Button Area */}
-          {order.status === 'pending' && (
-            <View style={styles.cancelSection}>
-              {cancelError && (
-                <ThemedText style={[styles.errorText, styles.cancelErrorText]}>
-                  {cancelError}
+          {/* Action Buttons Area */}
+          <View style={styles.actionButtonsContainer}>
+            {order.status === 'pending' && (
+              <View style={styles.buttonWrapper}>
+                {cancelError && (
+                  <ThemedText style={[styles.errorText, styles.cancelErrorText, styles.actionErrorText]}>
+                    {cancelError}
+                  </ThemedText>
+                )}
+                <Button
+                  variant="destructive"
+                  onPress={handleCancelOrder}
+                  disabled={isCancelling}
+                  fullWidth
+                >
+                  {isCancelling ? 'Cancelling...' : 'Cancel Order'}
+                </Button>
+              </View>
+            )}
+            {/* Download Invoice Button - always visible if order exists */}
+            <View style={styles.buttonWrapper}>
+              {downloadError && (
+                 <ThemedText style={[styles.errorText, styles.actionErrorText]}>
+                  {downloadError}
                 </ThemedText>
               )}
               <Button
-                variant="destructive"
-                onPress={handleCancelOrder}
-                disabled={isCancelling}
+                onPress={handleDownloadInvoice}
+                disabled={isDownloading}
+                variant="outline" // Changed variant for different color/style
                 fullWidth
+                leftIcon={<Download size={18} color={colors.primary} />} // Adjusted icon size and color
               >
-                {isCancelling ? 'Cancelling...' : 'Cancel Order'}
+                {isDownloading ? 'Downloading...' : 'Invoice'}
               </Button>
             </View>
-          )}
+          </View>
         </View>
 
         {/* Order Timeline Component */}
@@ -447,7 +466,7 @@ export default function OrderDetailScreen() {
             {(order.walletDiscount ?? 0) > 0 && (
               <View style={styles.priceRow}>
                 <ThemedText style={styles.priceLabel}>Wallet Discount</ThemedText>
-                <ThemedText style={[styles.priceValue, { color: colors.success }]}>
+                <ThemedText style={[styles.priceValue, { color: colors.primary }]}> 
                   -{formatCurrency(order.walletDiscount)}
                 </ThemedText>
               </View>
@@ -492,22 +511,7 @@ export default function OrderDetailScreen() {
                 </ThemedText>
               )}
             </View>
-            <View style={styles.downloadSection}>
-              {downloadError && (
-                <ThemedText style={styles.errorText}>
-                  {downloadError}
-                </ThemedText>
-              )}
-              <Button
-                onPress={handleDownloadInvoice}
-                disabled={isDownloading}
-                variant="secondary"
-                fullWidth
-                leftIcon={<Download size={20} color={colors.text} />}
-              >
-                {isDownloading ? 'Downloading...' : 'Download Invoice'}
-              </Button>
-            </View>
+            {/* Download section JSX removed from here */}
           </View>
         )}
 
@@ -558,24 +562,31 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       opacity: colorScheme === 'dark' ? 0.5 : 0.7,
       fontSize: 16,
     },
-    cancelSection: {
+    actionButtonsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       marginTop: 16,
       paddingTop: 16,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
+      gap: 12, // Add gap between buttons if both are present
     },
-    cancelErrorText: {
-      marginBottom: 12,
+    buttonWrapper: {
+      flex: 1, // Each button takes equal space if multiple
+    },
+    actionErrorText: { // Common style for errors above buttons
+      marginBottom: 8,
+      textAlign: 'center',
+      fontSize: 13,
+    },
+    // cancelSection is replaced by actionButtonsContainer related styles
+    cancelErrorText: { // Kept if specific styling needed beyond actionErrorText
+      // marginBottom: 12, // Handled by actionErrorText
       color: colors.error,
-      fontSize: 14,
+      // fontSize: 14, // Handled by actionErrorText
       opacity: 1,
     },
-    downloadSection: {
-      marginTop: 16,
-      paddingTop: 16,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
+    // downloadSection is removed as button is moved
     section: {
       padding: 16,
       backgroundColor: colors.surface,
@@ -697,93 +708,114 @@ const createStyles = (colors: typeof Colors.light, colorScheme: 'light' | 'dark'
       opacity: colorScheme === 'dark' ? 0.5 : 0.6,
     },
     itemsList: {
-      gap: 16,
+      // Removed gap here, will add margin to orderItem directly
     },
     orderItem: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
+      alignItems: 'flex-start', // Align items to the top for better multiline name handling
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      // gap: 12, // Use margin/padding for more control
     },
     itemImage: {
-      width: 60,
-      height: 60,
+      width: 70, // Slightly larger image
+      height: 70,
       borderRadius: 8,
+      marginRight: 12, // Added margin for spacing
+      backgroundColor: colors.border, // Placeholder background
     },
     itemDetails: {
       flex: 1,
+      justifyContent: 'center', // Vertically center details if name is short
+      paddingRight: 8, // Space before price
     },
     itemName: {
-      marginBottom: 4,
+      // Use ThemedText type="subtitle" or similar if desired, for now keep style
       fontSize: 15,
+      fontWeight: '500', // Medium weight for name
+      marginBottom: 4,
+      lineHeight: 20,
     },
     itemQuantity: {
-      fontSize: 14,
-      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
+      fontSize: 13,
+      color: colors.textSecondary, // Muted color for quantity
+      marginBottom: 4,
     },
     itemPrice: {
       fontWeight: '600',
       fontSize: 15,
+      textAlign: 'right', // Align price to the right
+      minWidth: 60, // Ensure some space for price
     },
     totalSection: {
-      marginTop: 24,
+      marginTop: 16, // Reduced top margin
       paddingTop: 16,
-      borderTopWidth: StyleSheet.hairlineWidth,
+      // borderTopWidth: StyleSheet.hairlineWidth, // Keep if sections are visually distinct, remove if part of a larger card
     },
     priceRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 8,
+      alignItems: 'center', // Align items vertically
+      marginBottom: 10, // Increased spacing
     },
     priceLabel: {
-      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
-      fontSize: 14,
+      // opacity: colorScheme === 'dark' ? 0.6 : 0.7, // Use ThemedText default or specific color
+      fontSize: 15, // Slightly larger label
+      color: colors.textSecondary,
     },
     priceValue: {
       fontWeight: '500',
-      fontSize: 14,
+      fontSize: 15, // Slightly larger value
+      color: colors.text,
     },
     finalTotal: {
-      marginTop: 8,
-      paddingTop: 8,
+      marginTop: 12, // Increased spacing
+      paddingTop: 12, // Increased spacing
       borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border, // Ensure border color is applied
     },
     finalTotalLabel: {
-      opacity: 1,
+      // opacity: 1, // Not needed if color is set directly
       fontWeight: '600',
-      fontSize: 16,
+      fontSize: 17, // Larger final total label
+      color: colors.text,
     },
     finalTotalValue: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 19, // Larger final total value
+      fontWeight: 'bold', // Bold final total
     },
     addressInfo: {
-      gap: 6,
+      gap: 8, // Increased gap
     },
     addressName: {
       fontWeight: '600',
-      fontSize: 15,
-      marginBottom: 4,
+      fontSize: 16, // Slightly larger
+      marginBottom: 2, // Reduced bottom margin
+      color: colors.text,
     },
     addressText: {
-      opacity: colorScheme === 'dark' ? 0.7 : 0.8,
+      // opacity: colorScheme === 'dark' ? 0.7 : 0.8, // Use default text color or textSecondary
       fontSize: 14,
-      lineHeight: 20,
+      lineHeight: 21, // Slightly increased line height
+      color: colors.textSecondary,
     },
     notes: {
       marginTop: 8,
       fontStyle: 'italic',
-      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
-      fontSize: 14,
+      color: colors.textSecondary,
+      fontSize: 13, // Slightly smaller
     },
     paymentInfo: {
-      gap: 6,
+      gap: 8, // Increased gap
     },
     paymentMethod: {
       fontWeight: '500',
       fontSize: 15,
+      color: colors.text,
     },
     paymentId: {
-      opacity: colorScheme === 'dark' ? 0.6 : 0.7,
+      color: colors.textSecondary,
       fontSize: 14,
     },
   });

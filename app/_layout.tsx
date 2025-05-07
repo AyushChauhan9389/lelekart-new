@@ -2,16 +2,31 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router'; // Removed useRouter, useSegments as they are unused here
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, createContext, useContext, useCallback, useMemo } from 'react'; // Added useMemo
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message'; // Import BaseToast, ErrorToast
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { View, Text, StyleSheet } from 'react-native'; // Import View, Text, StyleSheet
 import Colors from '@/constants/Colors';
-import { AuthProvider } from '@/context/AuthContext'; // Removed useAuth import
+import { AuthProvider, useAuth } from '@/context/AuthContext'; // Added useAuth
+import { api } from '@/utils/api'; // Import api for cart fetching
+import { useFocusEffect } from '@react-navigation/native'; // For cart updates on focus
 
-// Removed useProtectedRoute hook as logic will move to individual screens
-// function useProtectedRoute() { ... }
+// --- Cart Update Context ---
+interface CartUpdateContextType {
+  triggerCartUpdate: () => void;
+  cartCount: number;
+}
+const CartUpdateContext = createContext<CartUpdateContextType | undefined>(undefined);
+
+export const useCartUpdate = () => {
+  const context = useContext(CartUpdateContext);
+  if (!context) {
+    throw new Error('useCartUpdate must be used within a CartUpdateProvider');
+  }
+  return context;
+};
+// --- End Cart Update Context ---
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -121,11 +136,53 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <RootLayoutNav />
-        {/* Apply the custom config to the Toast component */}
-        <Toast config={toastConfig} /> 
-      </GestureHandlerRootView>
+      <CartProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <RootLayoutNav />
+          {/* Apply the custom config to the Toast component */}
+          <Toast config={toastConfig} />
+        </GestureHandlerRootView>
+      </CartProvider>
     </AuthProvider>
+  );
+}
+
+// CartProvider Component to encapsulate cart logic
+function CartProvider({ children }: { children: React.ReactNode }) {
+  const [cartCount, setCartCount] = useState(0);
+  const { user } = useAuth(); // Get user to decide on API vs local storage if needed
+
+  const fetchCartCount = useCallback(async () => {
+    try {
+      // This logic assumes api.cart.getItems() works for both logged-in and guest users
+      // or that guest cart is handled differently (e.g., via local storage directly in api.cart.getItems)
+      // For simplicity, directly using api.cart.getItems as in (tabs)/_layout.tsx
+      const items = await api.cart.getItems();
+      const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      setCartCount(totalQuantity);
+    } catch (error) {
+      if (error instanceof Error && !error.message.includes('401') && !error.message.includes('User not authenticated')) {
+        console.error('RootLayout: Failed to fetch cart count:', error);
+      }
+      setCartCount(0); // Reset on error or if not authenticated and API requires it
+    }
+  }, [user]); // Add user as dependency if cart fetching logic depends on auth state
+
+  useEffect(() => {
+    fetchCartCount();
+  }, [fetchCartCount, user]); // Fetch initially and when user changes
+
+  // Optional: Refetch on app focus or specific navigation events if needed globally
+  // useFocusEffect(useCallback(() => { fetchCartCount(); }, [fetchCartCount]));
+
+  const contextValue = useMemo(() => ({
+    triggerCartUpdate: fetchCartCount,
+    cartCount,
+  }), [fetchCartCount, cartCount]);
+
+  return (
+    <CartUpdateContext.Provider value={contextValue}>
+      {children}
+    </CartUpdateContext.Provider>
   );
 }

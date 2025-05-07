@@ -23,7 +23,7 @@ import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { LoginPrompt } from '@/components/ui/LoginPrompt';
-import { useCartUpdate } from './_layout'; // Import the hook
+import { useCartUpdate } from '@/app/_layout'; // Import the hook from global layout
 
 export default function CartScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
