@@ -33,7 +33,16 @@ export default function OrdersScreen() {
     try {
       setError(null);
       const data = await api.orders.getOrders();
-      setOrdersData(data);
+      // Sort orders by date, most recent first
+      const sortedOrders = {
+        ...data,
+        orders: [...data.orders].sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.date || 0);
+          const dateB = new Date(b.createdAt || b.date || 0);
+          return dateB.getTime() - dateA.getTime();
+        })
+      };
+      setOrdersData(sortedOrders);
     } catch (err) {
       console.error('Failed to fetch orders:', err);
       setError('Unable to load orders. Please try again.');

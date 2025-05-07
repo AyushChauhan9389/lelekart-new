@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { Platform, ActivityIndicator } from 'react-native';
 import { Home, Compass, ShoppingCart, Heart, User, Package, LayoutGrid } from 'lucide-react-native'; // Add Package and LayoutGrid
 import { api } from '@/utils/api';
@@ -9,6 +9,20 @@ import TabBarBackground from '@/components/ui/TabBarBackground';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
+// Create a context for cart updates
+interface CartUpdateContextType {
+  triggerCartUpdate: () => void;
+}
+const CartUpdateContext = createContext<CartUpdateContextType | undefined>(undefined);
+
+export const useCartUpdate = () => {
+  const context = useContext(CartUpdateContext);
+  if (!context) {
+    throw new Error('useCartUpdate must be used within a CartUpdateProvider');
+  }
+  return context;
+};
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const [cartCount, setCartCount] = React.useState(0);
@@ -16,7 +30,9 @@ export default function TabLayout() {
   const fetchCartCount = React.useCallback(async () => {
     try {
       const items = await api.cart.getItems();
-      setCartCount(items.length);
+      // Sum the quantities of each item in the cart
+      const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      setCartCount(totalQuantity);
     } catch (error) {
       // Only log error if it's not an auth error
       if (error instanceof Error && !error.message.includes('401')) {
@@ -38,10 +54,15 @@ export default function TabLayout() {
     }, [fetchCartCount])
   );
 
+  const contextValue = React.useMemo(() => ({
+    triggerCartUpdate: fetchCartCount
+  }), [fetchCartCount]);
+
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].primary,
+    <CartUpdateContext.Provider value={contextValue}>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].primary,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
@@ -84,6 +105,7 @@ export default function TabLayout() {
           title: 'Cart',
           headerShown: true,
           tabBarIcon: ({ color, size }) => <ShoppingCart size={size} color={color} />, // Use Lucide ShoppingCart
+          tabBarBadge: cartCount > 0 ? cartCount : undefined,
           // href removed - protection handled in screen
         }}
       />
@@ -110,6 +132,7 @@ export default function TabLayout() {
         name="search"
         options={{ href: null }}
       />
-    </Tabs>
+      </Tabs>
+    </CartUpdateContext.Provider>
   );
 }

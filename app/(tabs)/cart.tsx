@@ -23,6 +23,7 @@ import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { LoginPrompt } from '@/components/ui/LoginPrompt';
+import { useCartUpdate } from './_layout'; // Import the hook
 
 export default function CartScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -33,6 +34,7 @@ export default function CartScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { triggerCartUpdate } = useCartUpdate(); // Use the hook
   
   const styles = useMemo(() => createStyles(colors, colorScheme), [colors, colorScheme]);
 
@@ -95,6 +97,7 @@ export default function CartScreen() {
       await fetchCart();
     } finally {
       setUpdatingItem(null);
+      triggerCartUpdate(); // Trigger update
     }
   };
 
@@ -109,9 +112,10 @@ export default function CartScreen() {
       setCartItems(prevItems => prevItems.filter(item => item.id !== id));
     } catch (error) {
       console.error('Failed to remove item:', error);
-      await fetchCart();
+      await fetchCart(); // Keep local fetch for immediate UI update before context triggers
     } finally {
       setUpdatingItem(null);
+      triggerCartUpdate(); // Trigger update
     }
   };
 

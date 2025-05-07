@@ -15,6 +15,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { LoginPrompt } from '@/components/ui/LoginPrompt'; // Import LoginPrompt
 import { Button } from '@/components/ui/Button'; // Import Button
+import { OrderTimeline } from '@/components/order/OrderTimeline'; // Import OrderTimeline
 
 type TrackingInfo = {
   trackingId?: string;
@@ -310,6 +311,15 @@ export default function OrderDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Order Timeline Component */}
+        {order.status && (
+          <OrderTimeline
+            status={order.status}
+            createdAt={order.createdAt || order.date}
+            estimatedDeliveryDate={order.estimatedDeliveryDate ?? undefined}
+          />
+        )}
 
         {tracking && (tracking.trackingId || tracking.currentLocation || tracking.statusTimeline?.length) && (
           <View style={styles.section}>

@@ -38,7 +38,11 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
 
     if (!formData.addressName) newErrors.addressName = 'Address nickname is required';
     if (!formData.fullName) newErrors.fullName = 'Full name is required';
-    if (!formData.phone) newErrors.phone = 'Phone is required';
+    if (!formData.phone) {
+      newErrors.phone = 'Phone is required';
+    } else if (formData.phone.length !== 10) {
+      newErrors.phone = 'Phone number must be 10 digits';
+    }
     if (!formData.address) newErrors.address = 'Address is required';
     if (!formData.city) newErrors.city = 'City is required';
     if (!formData.state) newErrors.state = 'State is required';
@@ -91,16 +95,32 @@ export function AddressForm({ initialData, onSubmit, isSubmitting }: AddressForm
         const stateComponent = addressComponents.find((comp: any) =>
           comp.types.includes('administrative_area_level_1')
         );
-        const cityComponent = addressComponents.find((comp: any) =>
-          comp.types.includes('locality') || comp.types.includes('administrative_area_level_2')
-        );
+
+        // Attempt to find the most accurate city name
+        let cityName = '';
+        const postalTownComponent = addressComponents.find((comp: any) => comp.types.includes('postal_town'));
+        const localityComponent = addressComponents.find((comp: any) => comp.types.includes('locality'));
+        const adminArea3Component = addressComponents.find((comp: any) => comp.types.includes('administrative_area_level_3'));
+        const adminArea2Component = addressComponents.find((comp: any) => comp.types.includes('administrative_area_level_2'));
+
+        if (postalTownComponent) {
+          cityName = postalTownComponent.long_name;
+        } else if (localityComponent) {
+          cityName = localityComponent.long_name;
+        } else if (adminArea3Component) {
+          // Often, admin_area_level_3 provides a good city name when locality is too broad or a sub-district
+          cityName = adminArea3Component.long_name.replace(/ Taluk$/, '').replace(/ Tehsil$/, ''); // Remove common suffixes
+        } else if (adminArea2Component) {
+          cityName = adminArea2Component.long_name;
+        }
+
 
         if (stateComponent) {
           const stateName = stateComponent.long_name;
           setFormData(prev => ({
             ...prev,
             state: stateName,
-            city: cityComponent?.long_name || ''
+            city: cityName
           }));
           setPincodeValidationError(null);
         } else {
